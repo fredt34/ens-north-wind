@@ -46,7 +46,7 @@ jobs:
     # Step 6: Run code and upload output (artifact)
     - name: Run Code and Save Results
       run: |
-        python your_script.py > results.txt
+        python get-prediction.py > results.txt
 
     - name: Upload Results
       uses: actions/upload-artifact@v3
