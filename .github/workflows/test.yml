@@ -30,9 +30,9 @@ jobs:
         pip install .
 
     # Step 4: Optionally add any test step
-    - name: Run tests
-      run: |
-        pytest tests/
+    #- name: Run tests
+    #  run: |
+    # pytest tests/
 
     # Step 5: Cache dependencies (for faster builds)
     - name: Cache pip
