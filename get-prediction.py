@@ -46,6 +46,7 @@ hourly_data["wind_direction_80m"] = hourly_wind_direction_80m
 hourly_data["temperature_80m"] = hourly_temperature_80m
 
 hourly_dataframe = pd.DataFrame(data = hourly_data)
-pd.set_option("display.max_rows", None)
-pd.set_option("display.max_columns", None)
-print("\nHourly data\n", hourly_dataframe)
+# pd.set_option("display.max_rows", None)
+#pd.set_option("display.max_columns", None)
+#print("\nHourly data\n", hourly_dataframe)
+print(hourly_dataframe.to_string())
