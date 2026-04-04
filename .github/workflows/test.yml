@@ -53,3 +53,4 @@ jobs:
       with:
         name: code-results
         path: results.txt
+        compression-level: 0 # no compression
