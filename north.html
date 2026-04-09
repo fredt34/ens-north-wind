@@ -1,0 +1,322 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Vent heure par heure</title>
+  <style>
+    :root {
+      --bg: #0f172a;
+      --panel: #111827;
+      --panel-2: #1f2937;
+      --text: #e5e7eb;
+      --muted: #94a3b8;
+      --border: #334155;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      font-family: system-ui, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+    }
+
+    header {
+      padding: 20px 24px 8px;
+    }
+
+    h1 {
+      margin: 0;
+      font-size: 1.4rem;
+    }
+
+    .legend {
+      color: var(--muted);
+      font-size: 0.9rem;
+      margin-top: 8px;
+    }
+
+    main {
+      padding: 16px 24px 32px;
+      display: grid;
+      gap: 20px;
+    }
+
+    .day {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      overflow: hidden;
+    }
+
+    .day-header {
+      padding: 14px 16px;
+      background: var(--panel-2);
+      border-bottom: 1px solid var(--border);
+      font-weight: 700;
+      letter-spacing: 0.02em;
+    }
+
+    .hours {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(110px, 1fr));
+      gap: 1px;
+      background: var(--border);
+    }
+
+    .hour {
+      background: var(--panel);
+      min-height: 128px;
+      padding: 12px 8px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+    }
+
+    .time {
+      font-size: 0.9rem;
+      color: var(--muted);
+    }
+
+    .arrow-wrap {
+      height: 56px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .arrow {
+      display: inline-block;
+      line-height: 1;
+      transform-origin: center center;
+      user-select: none;
+    }
+
+    .meta {
+      text-align: center;
+      font-size: 0.82rem;
+      color: var(--muted);
+      line-height: 1.35;
+    }
+
+    .error {
+      margin: 24px;
+      padding: 16px;
+      border: 1px solid #7f1d1d;
+      background: #450a0a;
+      border-radius: 12px;
+      color: #fecaca;
+      white-space: pre-wrap;
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>Vent jour par jour / heure par heure</h1>
+    <div class="legend">
+      Flèche ⮝ : rotation = direction du vent, taille = vitesse par paliers de 10 km/h, couleur = température via <code>Weather Temp Colors.jpg</code>.
+    </div>
+  </header>
+
+  <main id="app"></main>
+
+  <script>
+    const CONFIG = {
+      dataUrl: "data.json",
+      colorScaleUrl: "Weather Temp Colors.jpg",
+
+      // Domaine de température à projeter sur l'image de couleurs.
+      // Ajuste ici pour coller exactement à ton image si besoin.
+      tempMin: -10,
+      tempMax: 40,
+
+      // Tailles de flèche par palier de 10 km/h
+      baseArrowSize: 18,
+      sizeStep: 10,
+
+      // Couleur de secours si l'image n'est pas trouvée
+      fallbackCold: [0, 140, 255],
+      fallbackHot: [255, 80, 0],
+    };
+
+    const app = document.getElementById("app");
+
+    function escapeHtml(s) {
+      return String(s).replace(/[&<>"']/g, c => ({
+        "&": "&amp;",
+        "<": "&lt;",
+        ">": "&gt;",
+        '"': "&quot;",
+        "'": "&#39;"
+      }[c]));
+    }
+
+    function clamp(value, min, max) {
+      return Math.min(max, Math.max(min, value));
+    }
+
+    function lerp(a, b, t) {
+      return a + (b - a) * t;
+    }
+
+    function rgbToCss([r, g, b]) {
+      return `rgb(${Math.round(r)}, ${Math.round(g)}, ${Math.round(b)})`;
+    }
+
+    function fallbackTempColor(temp) {
+      const t = clamp((temp - CONFIG.tempMin) / (CONFIG.tempMax - CONFIG.tempMin), 0, 1);
+      return [
+        lerp(CONFIG.fallbackCold[0], CONFIG.fallbackHot[0], t),
+        lerp(CONFIG.fallbackCold[1], CONFIG.fallbackHot[1], t),
+        lerp(CONFIG.fallbackCold[2], CONFIG.fallbackHot[2], t),
+      ];
+    }
+
+    async function loadImage(url) {
+      return new Promise((resolve, reject) => {
+        const img = new Image();
+        img.onload = () => resolve(img);
+        img.onerror = reject;
+        img.src = url;
+      });
+    }
+
+    async function buildColorSampler() {
+      try {
+        const img = await loadImage(CONFIG.colorScaleUrl);
+        const canvas = document.createElement("canvas");
+        const ctx = canvas.getContext("2d", { willReadFrequently: true });
+
+        canvas.width = img.naturalWidth || img.width;
+        canvas.height = img.naturalHeight || img.height;
+        ctx.drawImage(img, 0, 0);
+
+        // On échantillonne la ligne centrale de l'image, en supposant une échelle horizontale.
+        const y = Math.floor(canvas.height / 2);
+
+        return function sample(temp) {
+          const ratio = clamp((temp - CONFIG.tempMin) / (CONFIG.tempMax - CONFIG.tempMin), 0, 1);
+          const x = Math.floor(ratio * (canvas.width - 1));
+          const pixel = ctx.getImageData(x, y, 1, 1).data;
+          return [pixel[0], pixel[1], pixel[2]];
+        };
+      } catch {
+        return fallbackTempColor;
+      }
+    }
+
+    function arrowSizeForSpeed(speed) {
+      const tier = Math.floor(Math.max(0, speed) / 10); // 0-9 => 0, 10-19 => 1, etc.
+      return CONFIG.baseArrowSize + tier * CONFIG.sizeStep;
+    }
+
+    function groupByDay(hourly) {
+      const days = new Map();
+
+      for (let i = 0; i < hourly.time.length; i++) {
+        const iso = hourly.time[i];
+        const [date, hhmm] = iso.split("T");
+
+        if (!days.has(date)) days.set(date, []);
+
+        days.get(date).push({
+          iso,
+          date,
+          time: hhmm,
+          speed: hourly.wind_speed_80m[i],
+          direction: hourly.wind_direction_80m[i],
+          temp: hourly.temperature_80m[i],
+        });
+      }
+
+      return [...days.entries()].map(([date, hours]) => ({ date, hours }));
+    }
+
+    function formatDate(dateStr) {
+      const d = new Date(dateStr + "T00:00:00");
+      return new Intl.DateTimeFormat("fr-FR", {
+        weekday: "long",
+        day: "2-digit",
+        month: "long",
+        year: "numeric"
+      }).format(d);
+    }
+
+    function render(days, tempColor) {
+      app.innerHTML = days.map(day => {
+        const hoursHtml = day.hours.map(item => {
+          const size = arrowSizeForSpeed(item.speed);
+          const color = rgbToCss(tempColor(item.temp));
+
+          return `
+            <div class="hour">
+              <div class="time">${escapeHtml(item.time)}</div>
+              <div class="arrow-wrap">
+                <span
+                  class="arrow"
+                  title="${item.time} · ${item.speed} km/h · ${item.direction}° · ${item.temp}°C"
+                  style="
+                    font-size:${size}px;
+                    color:${color};
+                    transform: rotate(${item.direction}deg);
+                  "
+                >⮝</span>
+              </div>
+              <div class="meta">
+                <div>${item.speed} km/h</div>
+                <div>${item.direction}°</div>
+                <div>${item.temp} °C</div>
+              </div>
+            </div>
+          `;
+        }).join("");
+
+        return `
+          <section class="day">
+            <div class="day-header">${escapeHtml(formatDate(day.date))}</div>
+            <div class="hours">${hoursHtml}</div>
+          </section>
+        `;
+      }).join("");
+    }
+
+    async function main() {
+      try {
+        const [dataResponse, tempColor] = await Promise.all([
+          fetch(CONFIG.dataUrl),
+          buildColorSampler()
+        ]);
+
+        if (!dataResponse.ok) {
+          throw new Error(`Impossible de charger ${CONFIG.dataUrl} (${dataResponse.status})`);
+        }
+
+        const data = await dataResponse.json();
+        const hourly = data?.hourly;
+
+        if (
+          !hourly ||
+          !Array.isArray(hourly.time) ||
+          !Array.isArray(hourly.wind_speed_80m) ||
+          !Array.isArray(hourly.wind_direction_80m) ||
+          !Array.isArray(hourly.temperature_80m)
+        ) {
+          throw new Error("Structure JSON invalide.");
+        }
+
+        const days = groupByDay(hourly);
+        render(days, tempColor);
+      } catch (err) {
+        app.innerHTML = `<div class="error">${escapeHtml(err.message)}</div>`;
+        console.error(err);
+      }
+    }
+
+    main();
+  </script>
+</body>
+</html>
