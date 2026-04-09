@@ -126,7 +126,7 @@
 </head>
 <body>
   <header>
-    <h1>Prévisions Vent</h1>
+    <h1>Prévisions Vent+</h1>
     <div class="legend">
       Flèche  ⮝ : &#10148 : rotation = direction vers laquelle souffle le vent, taille = vitesse par paliers de 10 km/h, couleur = température via <code>Weather Temp Colors.jpg</code>.
     </div>
@@ -238,7 +238,7 @@
           const size = arrowSizeForSpeed(item.speed);
           const color = getTempColor(item.temp);
           const hourClass = isNorthWind(item.direction) ? "hour north" : "hour";
-          const windToDirection = (item.direction + 180 - 90) % 360;
+          const windToDirection = (item.direction + 180 + 90) % 360;
 
           return `
             <div class="${hourClass}">
