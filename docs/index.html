@@ -239,7 +239,7 @@
           const size = arrowSizeForSpeed(item.speed);
           const color = getTempColor(item.temp);
           const hourClass = isNorthWind(item.direction) ? "hour north" : "hour";
-          const windToDirection = (item.direction + 180 + 90) % 360;
+          const windToDirection = (item.direction + 90) % 360;
 
           return `
             <div class="${hourClass}">
