@@ -127,20 +127,10 @@
   <script>
     const CONFIG = {
       dataUrl: "data.json",
-      colorScaleUrl: "Weather Temp Colors.jpg",
-
-      // Domaine de température à projeter sur l'image de couleurs.
-      // Ajuste ici pour coller exactement à ton image si besoin.
-      tempMin: -10,
-      tempMax: 40,
 
       // Tailles de flèche par palier de 10 km/h
       baseArrowSize: 18,
       sizeStep: 10,
-
-      // Couleur de secours si l'image n'est pas trouvée
-      fallbackCold: [0, 140, 255],
-      fallbackHot: [255, 80, 0],
     };
 
     const app = document.getElementById("app");
@@ -155,58 +145,34 @@
       }[c]));
     }
 
-    function clamp(value, min, max) {
-      return Math.min(max, Math.max(min, value));
-    }
+    // Approximate palette sampled from the image:
+    // [minTemp, maxTemp, hexColor]
+    const WEATHER_TEMP_COLORS = [
+      { min: -Infinity, max: -22, color: "#1d469a" },
+      { min: -22, max: -16, color: "#1462a9" },
+      { min: -15, max: -11, color: "#1674b6" },
+      { min: -10, max: -6, color: "#368ac7" },
+      { min: -5, max: -3, color: "#3fa3da" },
+      { min: 0, max: 2, color: "#4ec0ee" },
+      { min: 1, max: 2, color: "#aedcd8" },
+      { min: 3, max: 4, color: "#a8d6ad" },
+      { min: 5, max: 6, color: "#9ed07f" },
+      { min: 7, max: 8, color: "#aed352" },
+      { min: 9, max: 10, color: "#d0d93e" },
+      { min: 11, max: 12, color: "#fcde04" },
+      { min: 13, max: 14, color: "#fbcb0c" },
+      { min: 15, max: 16, color: "#fcb716" },
+      { min: 17, max: 18, color: "#faa31a" },
+      { min: 19, max: 20, color: "#f68a1f" },
+      { min: 21, max: 24, color: "#f26a2f" },
+      { min: 25, max: 29, color: "#ec513a" },
+      { min: 30, max: 35, color: "#ed2a2a" },
+      { min: 36, max: 40, color: "#c32027" },
+      { min: 41, max: Infinity, color: "#9b1b1d" }
+    ];
 
-    function lerp(a, b, t) {
-      return a + (b - a) * t;
-    }
-
-    function rgbToCss([r, g, b]) {
-      return `rgb(${Math.round(r)}, ${Math.round(g)}, ${Math.round(b)})`;
-    }
-
-    function fallbackTempColor(temp) {
-      const t = clamp((temp - CONFIG.tempMin) / (CONFIG.tempMax - CONFIG.tempMin), 0, 1);
-      return [
-        lerp(CONFIG.fallbackCold[0], CONFIG.fallbackHot[0], t),
-        lerp(CONFIG.fallbackCold[1], CONFIG.fallbackHot[1], t),
-        lerp(CONFIG.fallbackCold[2], CONFIG.fallbackHot[2], t),
-      ];
-    }
-
-    async function loadImage(url) {
-      return new Promise((resolve, reject) => {
-        const img = new Image();
-        img.onload = () => resolve(img);
-        img.onerror = reject;
-        img.src = url;
-      });
-    }
-
-    async function buildColorSampler() {
-      try {
-        const img = await loadImage(CONFIG.colorScaleUrl);
-        const canvas = document.createElement("canvas");
-        const ctx = canvas.getContext("2d", { willReadFrequently: true });
-
-        canvas.width = img.naturalWidth || img.width;
-        canvas.height = img.naturalHeight || img.height;
-        ctx.drawImage(img, 0, 0);
-
-        // On échantillonne la ligne centrale de l'image, en supposant une échelle horizontale.
-        const y = Math.floor(canvas.height / 2);
-
-        return function sample(temp) {
-          const ratio = clamp((temp - CONFIG.tempMin) / (CONFIG.tempMax - CONFIG.tempMin), 0, 1);
-          const x = Math.floor(ratio * (canvas.width - 1));
-          const pixel = ctx.getImageData(x, y, 1, 1).data;
-          return [pixel[0], pixel[1], pixel[2]];
-        };
-      } catch {
-        return fallbackTempColor;
-      }
+    function getTempColor(temp) {
+      return WEATHER_TEMP_COLORS.find(r => temp >= r.min && temp <= r.max)?.color ?? "#000000";
     }
 
     function arrowSizeForSpeed(speed) {
@@ -246,11 +212,11 @@
       }).format(d);
     }
 
-    function render(days, tempColor) {
+    function render(days) {
       app.innerHTML = days.map(day => {
         const hoursHtml = day.hours.map(item => {
           const size = arrowSizeForSpeed(item.speed);
-          const color = rgbToCss(tempColor(item.temp));
+          const color = getTempColor(item.temp);
 
           return `
             <div class="hour">
@@ -287,10 +253,7 @@
 
     async function main() {
       try {
-        const [dataResponse, tempColor] = await Promise.all([
-          fetch(CONFIG.dataUrl),
-          buildColorSampler()
-        ]);
+        const dataResponse = await fetch(CONFIG.dataUrl);
 
         if (!dataResponse.ok) {
           throw new Error(`Impossible de charger ${CONFIG.dataUrl} (${dataResponse.status})`);
@@ -310,7 +273,7 @@
         }
 
         const days = groupByDay(hourly);
-        render(days, tempColor);
+        render(days);
       } catch (err) {
         app.innerHTML = `<div class="error">${escapeHtml(err.message)}</div>`;
         console.error(err);
