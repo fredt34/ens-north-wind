@@ -128,7 +128,7 @@
   <header>
     <h1>Vent jour par jour / heure par heure</h1>
     <div class="legend">
-      Flèche ⮝ : rotation = direction du vent, taille = vitesse par paliers de 10 km/h, couleur = température via <code>Weather Temp Colors.jpg</code>.
+      Flèche ⮝ : rotation = direction vers laquelle souffle le vent, taille = vitesse par paliers de 10 km/h, couleur = température via <code>Weather Temp Colors.jpg</code>.
     </div>
   </header>
 
@@ -136,7 +136,7 @@
 
   <script>
     const CONFIG = {
-      dataUrl: "data.json",
+      dataUrl: "https://api.open-meteo.com/v1/forecast?latitude=48.862725&longitude=2.287592&hourly=wind_speed_80m,wind_direction_80m,temperature_80m&timezone=auto&forecast_days=10",
 
       // Tailles de flèche par palier de 10 km/h
       baseArrowSize: 18,
@@ -238,6 +238,7 @@
           const size = arrowSizeForSpeed(item.speed);
           const color = getTempColor(item.temp);
           const hourClass = isNorthWind(item.direction) ? "hour north" : "hour";
+          const windToDirection = (item.direction + 180) % 360;
 
           return `
             <div class="${hourClass}">
@@ -249,7 +250,7 @@
                   style="
                     font-size:${size}px;
                     color:${color};
-                    transform: rotate(${item.direction}deg);
+                    transform: rotate(${windToDirection}deg);
                   "
                 >⮝</span>
               </div>
