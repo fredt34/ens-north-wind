@@ -172,7 +172,8 @@
     ];
 
     function getTempColor(temp) {
-      return WEATHER_TEMP_COLORS.find(r => temp >= r.min && temp <= r.max)?.color ?? "#000000";
+      const roundedTemp = Math.round(temp);
+      return WEATHER_TEMP_COLORS.find(r => roundedTemp >= r.min && roundedTemp <= r.max)?.color ?? "#000000";
     }
 
     function arrowSizeForSpeed(speed) {
