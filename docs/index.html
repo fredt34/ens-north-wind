@@ -77,6 +77,16 @@
       gap: 8px;
     }
 
+    .hour.north {
+      background: #ffffff;
+      color: #0f172a;
+    }
+
+    .hour.north .time,
+    .hour.north .meta {
+      color: #334155;
+    }
+
     .time {
       font-size: 0.9rem;
       color: var(--muted);
@@ -131,6 +141,10 @@
       // Tailles de flèche par palier de 10 km/h
       baseArrowSize: 18,
       sizeStep: 10,
+
+      // Vent du nord: secteur entre WNW et ENE (en traversant 0°)
+      northSectorWnwDeg: 292.5,
+      northSectorEneDeg: 67.5,
     };
 
     const app = document.getElementById("app");
@@ -181,6 +195,11 @@
       return CONFIG.baseArrowSize + tier * CONFIG.sizeStep;
     }
 
+    function isNorthWind(directionDeg) {
+      const angle = ((directionDeg % 360) + 360) % 360;
+      return angle >= CONFIG.northSectorWnwDeg || angle <= CONFIG.northSectorEneDeg;
+    }
+
     function groupByDay(hourly) {
       const days = new Map();
 
@@ -218,9 +237,10 @@
         const hoursHtml = day.hours.map(item => {
           const size = arrowSizeForSpeed(item.speed);
           const color = getTempColor(item.temp);
+          const hourClass = isNorthWind(item.direction) ? "hour north" : "hour";
 
           return `
-            <div class="hour">
+            <div class="${hourClass}">
               <div class="time">${escapeHtml(item.time)}</div>
               <div class="arrow-wrap">
                 <span
