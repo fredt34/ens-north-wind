@@ -1,0 +1,310 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Prévisions Vent à l'ENS</title>
+  <style>
+    :root {
+      --bg: #0f172a;
+      --panel: #111827;
+      --panel-2: #1f2937;
+      --text: #e5e7eb;
+      --muted: #94a3b8;
+      --border: #334155;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      font-family: system-ui, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+    }
+
+    header {
+      padding: 20px 24px 8px;
+    }
+
+    h1 {
+      margin: 0;
+      font-size: 1.4rem;
+    }
+
+    .legend {
+      color: var(--muted);
+      font-size: 0.9rem;
+      margin-top: 8px;
+    }
+
+    main {
+      padding: 16px 24px 32px;
+      display: grid;
+      gap: 20px;
+    }
+
+    .day {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      overflow: hidden;
+    }
+
+    .day-header {
+      padding: 14px 16px;
+      background: var(--panel-2);
+      border-bottom: 1px solid var(--border);
+      font-weight: 700;
+      letter-spacing: 0.02em;
+    }
+
+    .hours {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(110px, 1fr));
+      gap: 1px;
+      background: var(--border);
+    }
+
+    .hour {
+      background: var(--panel);
+      min-height: 128px;
+      padding: 12px 8px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+    }
+
+    .hour.north {
+      background: #ffffff;
+      color: #0f172a;
+    }
+
+    .hour.north .time,
+    .hour.north .meta {
+      color: #334155;
+    }
+
+    .time {
+      font-size: 0.9rem;
+      color: var(--muted);
+    }
+
+    .arrow-wrap {
+      height: 56px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .arrow {
+      display: inline-block;
+      line-height: 1;
+      transform-origin: center center;
+      user-select: none;
+    }
+
+    .meta {
+      text-align: center;
+      font-size: 0.82rem;
+      color: var(--muted);
+      line-height: 1.35;
+    }
+
+    .error {
+      margin: 24px;
+      padding: 16px;
+      border: 1px solid #7f1d1d;
+      background: #450a0a;
+      border-radius: 12px;
+      color: #fecaca;
+      white-space: pre-wrap;
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>Prévisions Vent pour l'ENS</h1>
+    <div class="legend">
+      Flèche &#10148 : direction vers laquelle souffle le vent, vitesse par paliers de 10 km/h, température.<br>
+      Les cases sur fond blanc indiquent le vent de secteur Nord (origine 292.5 à 67.5°)<br>
+      Données de <a href="https://api.open-meteo.com/v1/forecast?latitude=48.862725&longitude=2.287592&hourly=wind_speed_80m,wind_direction_80m,temperature_80m&timezone=auto&forecast_days=10" target="_blank">Open Meteo</a>
+    </div>
+  </header>
+
+  <main id="app"></main>
+
+  <script>
+    const CONFIG = {
+      dataUrl: "https://api.open-meteo.com/v1/forecast?latitude=48.862725&longitude=2.287592&hourly=wind_speed_80m,wind_direction_80m,temperature_80m&timezone=auto&forecast_days=10",
+
+      // Tailles de flèche par palier de 10 km/h
+      baseArrowSize: 18,
+      sizeStep: 10,
+
+      // Vent du nord: secteur entre WNW et ENE (en traversant 0°)
+      northSectorWnwDeg: 292.5,
+      northSectorEneDeg: 67.5,
+    };
+
+    const app = document.getElementById("app");
+
+    function escapeHtml(s) {
+      return String(s).replace(/[&<>"']/g, c => ({
+        "&": "&amp;",
+        "<": "&lt;",
+        ">": "&gt;",
+        '"': "&quot;",
+        "'": "&#39;"
+      }[c]));
+    }
+
+    // Approximate palette sampled from the image:
+    // [minTemp, maxTemp, hexColor]
+    const WEATHER_TEMP_COLORS = [
+      { min: -Infinity, max: -22, color: "#1d469a" },
+      { min: -22, max: -16, color: "#1462a9" },
+      { min: -15, max: -11, color: "#1674b6" },
+      { min: -10, max: -6, color: "#368ac7" },
+      { min: -5, max: -3, color: "#3fa3da" },
+      { min: 0, max: 2, color: "#4ec0ee" },
+      { min: 1, max: 2, color: "#aedcd8" },
+      { min: 3, max: 4, color: "#a8d6ad" },
+      { min: 5, max: 6, color: "#9ed07f" },
+      { min: 7, max: 8, color: "#aed352" },
+      { min: 9, max: 10, color: "#d0d93e" },
+      { min: 11, max: 12, color: "#fcde04" },
+      { min: 13, max: 14, color: "#fbcb0c" },
+      { min: 15, max: 16, color: "#fcb716" },
+      { min: 17, max: 18, color: "#faa31a" },
+      { min: 19, max: 20, color: "#f68a1f" },
+      { min: 21, max: 24, color: "#f26a2f" },
+      { min: 25, max: 29, color: "#ec513a" },
+      { min: 30, max: 35, color: "#ed2a2a" },
+      { min: 36, max: 40, color: "#c32027" },
+      { min: 41, max: Infinity, color: "#9b1b1d" }
+    ];
+
+    function getTempColor(temp) {
+      const roundedTemp = Math.round(temp);
+      return WEATHER_TEMP_COLORS.find(r => roundedTemp >= r.min && roundedTemp <= r.max)?.color ?? "#000000";
+    }
+
+    function arrowSizeForSpeed(speed) {
+      const tier = Math.floor(Math.max(0, speed) / 10); // 0-9 => 0, 10-19 => 1, etc.
+      return CONFIG.baseArrowSize + tier * CONFIG.sizeStep;
+    }
+
+    function isNorthWind(directionDeg) {
+      const angle = ((directionDeg % 360) + 360) % 360;
+      return angle >= CONFIG.northSectorWnwDeg || angle <= CONFIG.northSectorEneDeg;
+    }
+
+    function groupByDay(hourly) {
+      const days = new Map();
+
+      for (let i = 0; i < hourly.time.length; i++) {
+        const iso = hourly.time[i];
+        const [date, hhmm] = iso.split("T");
+
+        if (!days.has(date)) days.set(date, []);
+
+        days.get(date).push({
+          iso,
+          date,
+          time: hhmm,
+          speed: hourly.wind_speed_80m[i],
+          direction: hourly.wind_direction_80m[i],
+          temp: hourly.temperature_80m[i],
+        });
+      }
+
+      return [...days.entries()].map(([date, hours]) => ({ date, hours }));
+    }
+
+    function formatDate(dateStr) {
+      const d = new Date(dateStr + "T00:00:00");
+      return new Intl.DateTimeFormat("fr-FR", {
+        weekday: "long",
+        day: "2-digit",
+        month: "long",
+        year: "numeric"
+      }).format(d);
+    }
+
+    function render(days) {
+      app.innerHTML = days.map(day => {
+        const hoursHtml = day.hours.map(item => {
+          const size = arrowSizeForSpeed(item.speed);
+          const color = getTempColor(item.temp);
+          const hourClass = isNorthWind(item.direction) ? "hour north" : "hour";
+          const windToDirection = (item.direction + 90) % 360;
+
+          return `
+            <div class="${hourClass}">
+              <div class="time">${escapeHtml(item.time)}</div>
+              <div class="arrow-wrap">
+                <span
+                  class="arrow"
+                  title="${item.time} · ${item.speed} km/h · ${item.direction}° · ${item.temp}°C"
+                  style="
+                    font-size:${size}px;
+                    color:${color};
+                    transform: rotate(${windToDirection}deg);
+                  "
+                >&#10148</span>
+              </div>
+              <div class="meta">
+                <div>${item.speed} km/h</div>
+                <div>${item.direction}°</div>
+                <div>${item.temp} °C</div>
+              </div>
+            </div>
+          `;
+        }).join(""
+        );
+
+        return `
+          <section class="day">
+            <div class="day-header">${escapeHtml(formatDate(day.date))}</div>
+            <div class="hours">${hoursHtml}</div>
+          </section>
+        `;
+      }).join("");
+    }
+
+    async function main() {
+      try {
+        const dataResponse = await fetch(CONFIG.dataUrl);
+
+        if (!dataResponse.ok) {
+          throw new Error(`Impossible de charger ${CONFIG.dataUrl} (${dataResponse.status})`);
+        }
+
+        const data = await dataResponse.json();
+        const hourly = data?.hourly;
+
+        if (
+          !hourly ||
+          !Array.isArray(hourly.time) ||
+          !Array.isArray(hourly.wind_speed_80m) ||
+          !Array.isArray(hourly.wind_direction_80m) ||
+          !Array.isArray(hourly.temperature_80m)
+        ) {
+          throw new Error("Structure JSON invalide.");
+        }
+
+        const days = groupByDay(hourly);
+        render(days);
+      } catch (err) {
+        app.innerHTML = `<div class="error">${escapeHtml(err.message)}</div>`;
+        console.error(err);
+      }
+    }
+
+    main();
+  </script>
+</body>
+</html>

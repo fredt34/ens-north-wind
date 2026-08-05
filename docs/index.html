@@ -1,310 +1,378 @@
 <!doctype html>
 <html lang="fr">
 <head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>Prévisions Vent à l'ENS</title>
-  <style>
-    :root {
-      --bg: #0f172a;
-      --panel: #111827;
-      --panel-2: #1f2937;
-      --text: #e5e7eb;
-      --muted: #94a3b8;
-      --border: #334155;
-    }
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Prévisions Vent — ENS (v3, style meteogramme)</title>
+<style>
+  :root{
+    --bg: #0a0f1a;
+    --panel: #0d1526;
+    --line: #1c2740;
+    --ink: #e8ecf5;
+    --ink-dim: #8a95ac;
+    --curve: #8f6fe0;
+    --curve-fill-a: rgba(143,111,224,0.35);
+    --curve-fill-b: rgba(143,111,224,0.02);
 
-    * { box-sizing: border-box; }
+    --risk-0: #141d2e;
+    --risk-1: #5c2a2a;
+    --risk-2: #8f2f2f;
+    --risk-3: #c92f2f;
 
-    body {
-      margin: 0;
-      font-family: system-ui, sans-serif;
-      background: var(--bg);
-      color: var(--text);
-    }
+    --col-w: 40px;
+    --label-w: 78px;
+  }
 
-    header {
-      padding: 20px 24px 8px;
-    }
+  * { box-sizing: border-box; }
 
-    h1 {
-      margin: 0;
-      font-size: 1.4rem;
-    }
+  body{
+    margin:0;
+    background: var(--bg);
+    color: var(--ink);
+    font-family: "Inter", "Segoe UI", system-ui, sans-serif;
+    -webkit-font-smoothing: antialiased;
+  }
 
-    .legend {
-      color: var(--muted);
-      font-size: 0.9rem;
-      margin-top: 8px;
-    }
+  header{
+    padding: 26px 20px 16px;
+    border-bottom: 1px solid var(--line);
+  }
+  header h1{
+    margin: 0 0 4px;
+    font-size: 1.35rem;
+    font-weight: 700;
+    letter-spacing: -0.01em;
+  }
+  header p{
+    margin:0;
+    color: var(--ink-dim);
+    font-size: 0.86rem;
+  }
 
-    main {
-      padding: 16px 24px 32px;
-      display: grid;
-      gap: 20px;
-    }
+  .banner{
+    margin: 16px 20px 0;
+    padding: 12px 16px;
+    border-radius: 10px;
+    background: var(--risk-3);
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-size: 0.9rem;
+    font-weight: 600;
+  }
+  .banner .dot{
+    width:8px; height:8px; border-radius:50%;
+    background: #fff;
+    box-shadow: 0 0 8px 2px rgba(255,255,255,0.6);
+    flex: 0 0 auto;
+  }
+  .banner small{
+    display:block;
+    font-weight: 400;
+    color: rgba(255,255,255,0.8);
+    margin-top: 2px;
+  }
 
-    .day {
-      background: var(--panel);
-      border: 1px solid var(--border);
-      border-radius: 16px;
-      overflow: hidden;
-    }
+  .legend{
+    display:flex;
+    flex-wrap: wrap;
+    gap: 14px;
+    padding: 16px 20px 4px;
+    font-size: 0.76rem;
+    color: var(--ink-dim);
+  }
+  .legend span{ display:inline-flex; align-items:center; gap:6px; }
+  .swatch{ width:12px; height:12px; border-radius:3px; display:inline-block; }
 
-    .day-header {
-      padding: 14px 16px;
-      background: var(--panel-2);
-      border-bottom: 1px solid var(--border);
-      font-weight: 700;
-      letter-spacing: 0.02em;
-    }
+  .scroller{
+    overflow-x: auto;
+    padding-bottom: 20px;
+  }
 
-    .hours {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(110px, 1fr));
-      gap: 1px;
-      background: var(--border);
-    }
+  .board{
+    min-width: calc(var(--label-w) + 24 * var(--col-w));
+    padding: 14px 20px 0;
+  }
 
-    .hour {
-      background: var(--panel);
-      min-height: 128px;
-      padding: 12px 8px;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
-      gap: 8px;
-    }
+  .hour-axis{
+    display: grid;
+    grid-template-columns: var(--label-w) repeat(24, var(--col-w));
+    position: sticky;
+    top: 0;
+    background: var(--bg);
+    z-index: 3;
+    padding-bottom: 4px;
+  }
+  .hour-axis .spacer{ }
+  .hour-axis span{
+    text-align: center;
+    font-size: 0.65rem;
+    color: var(--ink-dim);
+  }
+  .hour-axis span.now{ color: var(--ink); font-weight: 700; }
 
-    .hour.north {
-      background: #ffffff;
-      color: #0f172a;
-    }
+  .day-row{
+    display: grid;
+    grid-template-columns: var(--label-w) repeat(24, var(--col-w));
+    align-items: end;
+    border-top: 1px solid var(--line);
+    padding: 10px 0 8px;
+    border-radius: 8px;
+    transition: background 0.2s ease;
+  }
+  .day-row:last-child{ border-bottom: 1px solid var(--line); }
 
-    .hour.north .time,
-    .hour.north .meta {
-      color: #334155;
-    }
+  .day-label{
+    display:flex;
+    flex-direction: column;
+    justify-content: center;
+    padding-right: 8px;
+    font-size: 0.82rem;
+    font-weight: 600;
+    line-height: 1.3;
+  }
+  .day-label .sub{
+    font-weight: 400;
+    color: var(--ink-dim);
+    font-size: 0.68rem;
+  }
 
-    .time {
-      font-size: 0.9rem;
-      color: var(--muted);
-    }
+  .chart-cell{
+    grid-column: 2 / span 24;
+    position: relative;
+    height: 46px;
+  }
+  .chart-cell svg{ display:block; width:100%; height:100%; overflow: visible; }
 
-    .arrow-wrap {
-      height: 56px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-    }
+  .arrow-row{
+    grid-column: 2 / span 24;
+    display: grid;
+    grid-template-columns: repeat(24, var(--col-w));
+    margin-top: 2px;
+    border-radius: 6px;
+    overflow: hidden;
+  }
+  .arrow-cell{
+    height: 28px;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    position: relative;
+  }
+  .arrow-cell.now::before{
+    content:"";
+    position:absolute; inset:0;
+    box-shadow: inset 0 0 0 1px rgba(232,236,245,0.5);
+  }
+  .arrow-cell.risk-3::after{
+    content:"";
+    position:absolute; inset:1px;
+    border-radius: 3px;
+    border: 1px solid rgba(255,255,255,0.4);
+    animation: pulse 2.2s ease-in-out infinite;
+  }
+  @keyframes pulse{ 0%,100%{opacity:.35;} 50%{opacity:.9;} }
 
-    .arrow {
-      display: inline-block;
-      line-height: 1;
-      transform-origin: center center;
-      user-select: none;
-    }
+  .arrow{
+    display:inline-block;
+    color:#f4f6fb;
+    font-size: 13px;
+    line-height: 1;
+  }
 
-    .meta {
-      text-align: center;
-      font-size: 0.82rem;
-      color: var(--muted);
-      line-height: 1.35;
-    }
+  .legend-arrows{
+    display:flex; align-items:center; gap:16px;
+    padding: 6px 20px 24px;
+    font-size: 0.76rem;
+    color: var(--ink-dim);
+  }
+  .legend-arrows .sample{ display:flex; align-items:center; gap:6px; }
 
-    .error {
-      margin: 24px;
-      padding: 16px;
-      border: 1px solid #7f1d1d;
-      background: #450a0a;
-      border-radius: 12px;
-      color: #fecaca;
-      white-space: pre-wrap;
-    }
-  </style>
+  footer{
+    padding: 8px 20px 30px;
+    color: var(--ink-dim);
+    font-size: 0.7rem;
+  }
+
+  @media (prefers-reduced-motion: reduce){
+    .arrow-cell.risk-3::after{ animation:none; opacity:.7; }
+  }
+</style>
 </head>
 <body>
-  <header>
-    <h1>Prévisions Vent pour l'ENS</h1>
-    <div class="legend">
-      Flèche &#10148 : direction vers laquelle souffle le vent, vitesse par paliers de 10 km/h, température.<br>
-      Les cases sur fond blanc indiquent le vent de secteur Nord (origine 292.5 à 67.5°)<br>
-      Données de <a href="https://api.open-meteo.com/v1/forecast?latitude=48.862725&longitude=2.287592&hourly=wind_speed_80m,wind_direction_80m,temperature_80m&timezone=auto&forecast_days=10" target="_blank">Open Meteo</a>
-    </div>
-  </header>
 
-  <main id="app"></main>
+<header>
+  <h1>Prévisions Vent — ENS</h1>
+  <p>Courbe = vitesse du vent. Flèches = direction (vers laquelle il souffle). Fond des flèches = niveau de risque (secteur Nord).</p>
+</header>
 
-  <script>
-    const CONFIG = {
-      dataUrl: "https://api.open-meteo.com/v1/forecast?latitude=48.862725&longitude=2.287592&hourly=wind_speed_80m,wind_direction_80m,temperature_80m&timezone=auto&forecast_days=10",
+<div class="banner">
+  <span class="dot"></span>
+  <div>
+    Prochain créneau critique&nbsp;: <strong>jeudi 14h–18h</strong>
+    <small>Vent de Nord soutenu attendu — préparer la suspension des expériences sensibles.</small>
+  </div>
+</div>
 
-      // Tailles de flèche par palier de 10 km/h
-      baseArrowSize: 18,
-      sizeStep: 10,
+<div class="legend">
+  <span><span class="swatch" style="background:var(--risk-0)"></span> Neutre</span>
+  <span><span class="swatch" style="background:var(--risk-1)"></span> Vigilance</span>
+  <span><span class="swatch" style="background:var(--risk-2)"></span> Alerte</span>
+  <span><span class="swatch" style="background:var(--risk-3)"></span> Critique</span>
+</div>
 
-      // Vent du nord: secteur entre WNW et ENE (en traversant 0°)
-      northSectorWnwDeg: 292.5,
-      northSectorEneDeg: 67.5,
-    };
+<div class="scroller">
+  <div class="board" id="board"></div>
+</div>
 
-    const app = document.getElementById("app");
+<div class="legend-arrows">
+  <span class="sample"><span class="arrow" style="font-size:12px">➨</span> vent faible</span>
+  <span class="sample"><span class="arrow" style="font-size:16px">➨</span> vent modéré</span>
+  <span class="sample"><span class="arrow" style="font-size:20px">➨</span> vent fort</span>
+</div>
 
-    function escapeHtml(s) {
-      return String(s).replace(/[&<>"']/g, c => ({
-        "&": "&amp;",
-        "<": "&lt;",
-        ">": "&gt;",
-        '"': "&quot;",
-        "'": "&#39;"
-      }[c]));
+<footer>Maquette de démonstration — données fictives, colonne "maintenant" simulée sur jeudi 15h.</footer>
+
+<script>
+  const days = [
+    { label: "Mercredi", date: "5 août" },
+    { label: "Jeudi", date: "6 août" },
+    { label: "Vendredi", date: "7 août" },
+    { label: "Samedi", date: "8 août" },
+    { label: "Dimanche", date: "9 août" },
+    { label: "Lundi", date: "10 août" },
+    { label: "Mardi", date: "11 août" },
+  ];
+  const hours = Array.from({length: 24}, (_, i) => i);
+  const NOW_DAY = 1, NOW_HOUR = 15;
+  const NORTH_MIN = 292.5, NORTH_MAX = 67.5;
+
+  function isNorth(dir){ return dir >= NORTH_MIN || dir <= NORTH_MAX; }
+  function riskLevel(dir, speed){
+    if (!isNorth(dir)) return 0;
+    if (speed < 15) return 1;
+    if (speed < 30) return 2;
+    return 3;
+  }
+  function arrowSize(speed){
+    const min = 11, max = 20;
+    const c = Math.max(0, Math.min(45, speed));
+    return min + (c/45) * (max-min);
+  }
+
+  // colors that echo the risk palette, but tuned for use as a stroke/fill/wash
+  const STROKE_COLOR = { 0: "#8f6fe0", 1: "#c96a4a", 2: "#e1483f", 3: "#ff4d4d" };
+  const FILL_COLOR   = { 0: "rgba(143,111,224,0.32)", 1: "rgba(201,106,74,0.28)", 2: "rgba(225,72,63,0.30)", 3: "rgba(255,77,77,0.34)" };
+  const ROW_WASH     = { 0: "transparent", 1: "rgba(140,60,60,0.08)", 2: "rgba(180,50,50,0.13)", 3: "rgba(220,40,40,0.18)" };
+
+  function genData(dayIdx, hour){
+    let dir, speed;
+    if (dayIdx === 1 && hour >= 11 && hour <= 20){
+      const t = (hour-11)/9;
+      dir = 350 + Math.sin(t*Math.PI)*20;
+      speed = 8 + Math.sin(t*Math.PI)*28;
+    } else if (dayIdx === 4 && hour >= 6 && hour <= 10){
+      dir = 20; speed = 10 + (hour-6)*2;
+    } else {
+      dir = (140 + dayIdx*17 + hour*5) % 360;
+      speed = 4 + ((dayIdx*13 + hour*7) % 14);
     }
+    return { dir: ((dir%360)+360)%360, speed: Math.round(speed) };
+  }
 
-    // Approximate palette sampled from the image:
-    // [minTemp, maxTemp, hexColor]
-    const WEATHER_TEMP_COLORS = [
-      { min: -Infinity, max: -22, color: "#1d469a" },
-      { min: -22, max: -16, color: "#1462a9" },
-      { min: -15, max: -11, color: "#1674b6" },
-      { min: -10, max: -6, color: "#368ac7" },
-      { min: -5, max: -3, color: "#3fa3da" },
-      { min: 0, max: 2, color: "#4ec0ee" },
-      { min: 1, max: 2, color: "#aedcd8" },
-      { min: 3, max: 4, color: "#a8d6ad" },
-      { min: 5, max: 6, color: "#9ed07f" },
-      { min: 7, max: 8, color: "#aed352" },
-      { min: 9, max: 10, color: "#d0d93e" },
-      { min: 11, max: 12, color: "#fcde04" },
-      { min: 13, max: 14, color: "#fbcb0c" },
-      { min: 15, max: 16, color: "#fcb716" },
-      { min: 17, max: 18, color: "#faa31a" },
-      { min: 19, max: 20, color: "#f68a1f" },
-      { min: 21, max: 24, color: "#f26a2f" },
-      { min: 25, max: 29, color: "#ec513a" },
-      { min: 30, max: 35, color: "#ed2a2a" },
-      { min: 36, max: 40, color: "#c32027" },
-      { min: 41, max: Infinity, color: "#9b1b1d" }
-    ];
+  // build hour axis
+  const board = document.getElementById("board");
 
-    function getTempColor(temp) {
-      const roundedTemp = Math.round(temp);
-      return WEATHER_TEMP_COLORS.find(r => roundedTemp >= r.min && roundedTemp <= r.max)?.color ?? "#000000";
-    }
+  const axis = document.createElement("div");
+  axis.className = "hour-axis";
+  const spacer = document.createElement("div");
+  spacer.className = "spacer";
+  axis.appendChild(spacer);
+  hours.forEach(h => {
+    const span = document.createElement("span");
+    span.textContent = String(h).padStart(2,"0");
+    if (h === NOW_HOUR) span.classList.add("now");
+    axis.appendChild(span);
+  });
+  board.appendChild(axis);
 
-    function arrowSizeForSpeed(speed) {
-      const tier = Math.floor(Math.max(0, speed) / 10); // 0-9 => 0, 10-19 => 1, etc.
-      return CONFIG.baseArrowSize + tier * CONFIG.sizeStep;
-    }
+  const SPEED_MAX = 45;
 
-    function isNorthWind(directionDeg) {
-      const angle = ((directionDeg % 360) + 360) % 360;
-      return angle >= CONFIG.northSectorWnwDeg || angle <= CONFIG.northSectorEneDeg;
-    }
+  days.forEach((day, dayIdx) => {
+    const row = document.createElement("div");
+    row.className = "day-row";
 
-    function groupByDay(hourly) {
-      const days = new Map();
+    const label = document.createElement("div");
+    label.className = "day-label";
+    label.innerHTML = day.label + '<span class="sub">' + day.date + '</span>';
+    row.appendChild(label);
 
-      for (let i = 0; i < hourly.time.length; i++) {
-        const iso = hourly.time[i];
-        const [date, hhmm] = iso.split("T");
+    const data = hours.map(h => genData(dayIdx, h));
+    const risks = data.map(d => riskLevel(d.dir, d.speed));
+    const maxRisk = Math.max(...risks);
+    row.style.background = ROW_WASH[maxRisk];
 
-        if (!days.has(date)) days.set(date, []);
+    // chart
+    const chartCell = document.createElement("div");
+    chartCell.className = "chart-cell";
+    const W = 24, H = 46;
+    const pts = data.map((d,i) => {
+      const x = i + 0.5;
+      const y = H - (Math.min(d.speed, SPEED_MAX)/SPEED_MAX) * (H-6) - 3;
+      return [x,y];
+    });
+    const line = pts.map((p,i) => (i===0?"M":"L") + p[0] + "," + p[1].toFixed(1)).join(" ");
+    const area = line + ` L${W},${H} L0,${H} Z`;
 
-        days.get(date).push({
-          iso,
-          date,
-          time: hhmm,
-          speed: hourly.wind_speed_80m[i],
-          direction: hourly.wind_direction_80m[i],
-          temp: hourly.temperature_80m[i],
-        });
-      }
+    // gradient stops follow the risk level at each hour, so the curve's color
+    // echoes the arrow row underneath it instead of staying a flat purple
+    const stops = risks.map((r,i) => {
+      const offset = ((i + 0.5) / W * 100).toFixed(1) + "%";
+      return { offset, stroke: STROKE_COLOR[r], fill: FILL_COLOR[r] };
+    });
+    const strokeStops = stops.map(s => `<stop offset="${s.offset}" stop-color="${s.stroke}"/>`).join("");
+    const fillStops = stops.map(s => `<stop offset="${s.offset}" stop-color="${s.fill}"/>`).join("");
 
-      return [...days.entries()].map(([date, hours]) => ({ date, hours }));
-    }
+    chartCell.innerHTML = `
+      <svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="none">
+        <defs>
+          <linearGradient id="stroke${dayIdx}" x1="0" y1="0" x2="${W}" y2="0" gradientUnits="userSpaceOnUse">
+            ${strokeStops}
+          </linearGradient>
+          <linearGradient id="fill${dayIdx}" x1="0" y1="0" x2="${W}" y2="0" gradientUnits="userSpaceOnUse">
+            ${fillStops}
+          </linearGradient>
+        </defs>
+        <path d="${area}" fill="url(#fill${dayIdx})" stroke="none"/>
+        <path d="${line}" fill="none" stroke="url(#stroke${dayIdx})" stroke-width="0.9" vector-effect="non-scaling-stroke"/>
+      </svg>`;
+    row.appendChild(chartCell);
 
-    function formatDate(dateStr) {
-      const d = new Date(dateStr + "T00:00:00");
-      return new Intl.DateTimeFormat("fr-FR", {
-        weekday: "long",
-        day: "2-digit",
-        month: "long",
-        year: "numeric"
-      }).format(d);
-    }
+    // arrows
+    const arrowRow = document.createElement("div");
+    arrowRow.className = "arrow-row";
+    data.forEach((d, h) => {
+      const risk = riskLevel(d.dir, d.speed);
+      const cell = document.createElement("div");
+      cell.className = "arrow-cell risk-" + risk;
+      cell.style.background = "var(--risk-" + risk + ")";
+      if (dayIdx === NOW_DAY && h === NOW_HOUR) cell.classList.add("now");
+      cell.title = `${day.label} ${String(h).padStart(2,"0")}h — ${d.speed} km/h, ${Math.round(d.dir)}°`;
+      const rotation = (d.dir + 90) % 360;
+      const span = document.createElement("span");
+      span.className = "arrow";
+      span.textContent = "➨";
+      span.style.fontSize = arrowSize(d.speed) + "px";
+      span.style.transform = "rotate(" + rotation + "deg)";
+      cell.appendChild(span);
+      arrowRow.appendChild(cell);
+    });
+    row.appendChild(arrowRow);
 
-    function render(days) {
-      app.innerHTML = days.map(day => {
-        const hoursHtml = day.hours.map(item => {
-          const size = arrowSizeForSpeed(item.speed);
-          const color = getTempColor(item.temp);
-          const hourClass = isNorthWind(item.direction) ? "hour north" : "hour";
-          const windToDirection = (item.direction + 90) % 360;
+    board.appendChild(row);
+  });
+</script>
 
-          return `
-            <div class="${hourClass}">
-              <div class="time">${escapeHtml(item.time)}</div>
-              <div class="arrow-wrap">
-                <span
-                  class="arrow"
-                  title="${item.time} · ${item.speed} km/h · ${item.direction}° · ${item.temp}°C"
-                  style="
-                    font-size:${size}px;
-                    color:${color};
-                    transform: rotate(${windToDirection}deg);
-                  "
-                >&#10148</span>
-              </div>
-              <div class="meta">
-                <div>${item.speed} km/h</div>
-                <div>${item.direction}°</div>
-                <div>${item.temp} °C</div>
-              </div>
-            </div>
-          `;
-        }).join(""
-        );
-
-        return `
-          <section class="day">
-            <div class="day-header">${escapeHtml(formatDate(day.date))}</div>
-            <div class="hours">${hoursHtml}</div>
-          </section>
-        `;
-      }).join("");
-    }
-
-    async function main() {
-      try {
-        const dataResponse = await fetch(CONFIG.dataUrl);
-
-        if (!dataResponse.ok) {
-          throw new Error(`Impossible de charger ${CONFIG.dataUrl} (${dataResponse.status})`);
-        }
-
-        const data = await dataResponse.json();
-        const hourly = data?.hourly;
-
-        if (
-          !hourly ||
-          !Array.isArray(hourly.time) ||
-          !Array.isArray(hourly.wind_speed_80m) ||
-          !Array.isArray(hourly.wind_direction_80m) ||
-          !Array.isArray(hourly.temperature_80m)
-        ) {
-          throw new Error("Structure JSON invalide.");
-        }
-
-        const days = groupByDay(hourly);
-        render(days);
-      } catch (err) {
-        app.innerHTML = `<div class="error">${escapeHtml(err.message)}</div>`;
-        console.error(err);
-      }
-    }
-
-    main();
-  </script>
 </body>
 </html>
