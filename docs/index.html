@@ -49,6 +49,10 @@
     color: var(--ink-dim);
     font-size: 0.86rem;
   }
+  header a{
+    color: var(--ink);
+    text-decoration: underline;
+  }
 
   .banner{
     margin: 16px 20px 0;
@@ -195,6 +199,17 @@
     font-size: 0.7rem;
   }
 
+  .error {
+    margin: 24px;
+    padding: 16px;
+    border: 1px solid #7f1d1d;
+    background: #450a0a;
+    border-radius: 12px;
+    color: #fecaca;
+    white-space: pre-wrap;
+    font-size: 0.85rem;
+  }
+
   @media (prefers-reduced-motion: reduce){
     .arrow-cell.risk-3::after{ animation:none; opacity:.7; }
   }
@@ -204,15 +219,12 @@
 
 <header>
   <h1>Prévisions Vent — ENS</h1>
-  <p>Courbe = vitesse du vent. Flèches = direction (vers laquelle il souffle). Fond des flèches = niveau de risque (secteur Nord).</p>
+  <p>Courbe = vitesse du vent. Flèches = direction (vers laquelle il souffle). Fond des flèches = niveau de risque (secteur Nord). Données de <a href="https://open-meteo.com/" target="_blank">Open Meteo</a></p>
 </header>
 
-<div class="banner">
+<div class="banner" id="banner" style="display:none;">
   <span class="dot"></span>
-  <div>
-    Prochain créneau critique&nbsp;: <strong>jeudi 14h–18h</strong>
-    <small>Vent de Nord soutenu attendu — préparer la suspension des expériences sensibles.</small>
-  </div>
+  <div id="bannerText"></div>
 </div>
 
 <div class="legend">
@@ -232,146 +244,216 @@
   <span class="sample"><span class="arrow" style="font-size:20px">➨</span> vent fort</span>
 </div>
 
-<footer>Maquette de démonstration — données fictives, colonne "maintenant" simulée sur jeudi 15h.</footer>
+<footer id="footer">Chargement des données...</footer>
 
 <script>
-  const days = [
-    { label: "Mercredi", date: "5 août" },
-    { label: "Jeudi", date: "6 août" },
-    { label: "Vendredi", date: "7 août" },
-    { label: "Samedi", date: "8 août" },
-    { label: "Dimanche", date: "9 août" },
-    { label: "Lundi", date: "10 août" },
-    { label: "Mardi", date: "11 août" },
-  ];
-  const hours = Array.from({length: 24}, (_, i) => i);
-  const NOW_DAY = 1, NOW_HOUR = 15;
-  const NORTH_MIN = 292.5, NORTH_MAX = 67.5;
+  const CONFIG = {
+    dataUrl: "https://api.open-meteo.com/v1/forecast?latitude=48.8627&longitude=2.2875&hourly=wind_speed_80m,wind_direction_80m&timezone=auto&forecast_days=10",
+    northSectorWnwDeg: 292.5,
+    northSectorEneDeg: 67.5,
+  };
 
-  function isNorth(dir){ return dir >= NORTH_MIN || dir <= NORTH_MAX; }
+  function isNorth(dir){ return dir >= CONFIG.northSectorWnwDeg || dir <= CONFIG.northSectorEneDeg; }
+  
   function riskLevel(dir, speed){
     if (!isNorth(dir)) return 0;
     if (speed < 15) return 1;
     if (speed < 30) return 2;
     return 3;
   }
+  
   function arrowSize(speed){
     const min = 11, max = 20;
     const c = Math.max(0, Math.min(45, speed));
     return min + (c/45) * (max-min);
   }
 
-  // colors that echo the risk palette, but tuned for use as a stroke/fill/wash
   const STROKE_COLOR = { 0: "#8f6fe0", 1: "#c96a4a", 2: "#e1483f", 3: "#ff4d4d" };
   const FILL_COLOR   = { 0: "rgba(143,111,224,0.32)", 1: "rgba(201,106,74,0.28)", 2: "rgba(225,72,63,0.30)", 3: "rgba(255,77,77,0.34)" };
   const ROW_WASH     = { 0: "transparent", 1: "rgba(140,60,60,0.08)", 2: "rgba(180,50,50,0.13)", 3: "rgba(220,40,40,0.18)" };
 
-  function genData(dayIdx, hour){
-    let dir, speed;
-    if (dayIdx === 1 && hour >= 11 && hour <= 20){
-      const t = (hour-11)/9;
-      dir = 350 + Math.sin(t*Math.PI)*20;
-      speed = 8 + Math.sin(t*Math.PI)*28;
-    } else if (dayIdx === 4 && hour >= 6 && hour <= 10){
-      dir = 20; speed = 10 + (hour-6)*2;
-    } else {
-      dir = (140 + dayIdx*17 + hour*5) % 360;
-      speed = 4 + ((dayIdx*13 + hour*7) % 14);
+  function groupByDay(hourly) {
+    const days = new Map();
+
+    for (let i = 0; i < hourly.time.length; i++) {
+      const iso = hourly.time[i];
+      const [date, hhmm] = iso.split("T");
+
+      if (!days.has(date)) days.set(date, []);
+
+      days.get(date).push({
+        iso,
+        date,
+        time: hhmm,
+        speed: hourly.wind_speed_80m[i],
+        direction: hourly.wind_direction_80m[i],
+      });
     }
-    return { dir: ((dir%360)+360)%360, speed: Math.round(speed) };
+
+    return [...days.entries()].map(([date, hours]) => ({ date, hours }));
   }
 
-  // build hour axis
-  const board = document.getElementById("board");
+  function formatDate(dateStr) {
+    const d = new Date(dateStr + "T00:00:00");
+    return new Intl.DateTimeFormat("fr-FR", {
+      weekday: "long",
+      day: "2-digit",
+      month: "long",
+      year: "numeric"
+    }).format(d);
+  }
 
-  const axis = document.createElement("div");
-  axis.className = "hour-axis";
-  const spacer = document.createElement("div");
-  spacer.className = "spacer";
-  axis.appendChild(spacer);
-  hours.forEach(h => {
-    const span = document.createElement("span");
-    span.textContent = String(h).padStart(2,"0");
-    if (h === NOW_HOUR) span.classList.add("now");
-    axis.appendChild(span);
-  });
-  board.appendChild(axis);
+  function findCriticalWindow(days) {
+    for (let dayIdx = 0; dayIdx < days.length; dayIdx++) {
+      const day = days[dayIdx];
+      for (let h = 0; h < day.hours.length - 3; h++) {
+        let allCritical = true;
+        for (let i = 0; i < 4; i++) {
+          const risk = riskLevel(day.hours[h + i].direction, day.hours[h + i].speed);
+          if (risk < 3) { allCritical = false; break; }
+        }
+        if (allCritical) {
+          const startTime = day.hours[h].time.slice(0, 5);
+          const endTime = day.hours[h + 3].time.slice(0, 5);
+          const dayLabel = new Intl.DateTimeFormat("fr-FR", { weekday: "long" }).format(new Date(day.date + "T00:00:00"));
+          return `${dayLabel} ${startTime}–${endTime}`;
+        }
+      }
+    }
+    return null;
+  }
 
-  const SPEED_MAX = 45;
+  async function main() {
+    const board = document.getElementById("board");
+    const banner = document.getElementById("banner");
+    const bannerText = document.getElementById("bannerText");
+    const footer = document.getElementById("footer");
 
-  days.forEach((day, dayIdx) => {
-    const row = document.createElement("div");
-    row.className = "day-row";
+    try {
+      const dataResponse = await fetch(CONFIG.dataUrl);
 
-    const label = document.createElement("div");
-    label.className = "day-label";
-    label.innerHTML = day.label + '<span class="sub">' + day.date + '</span>';
-    row.appendChild(label);
+      if (!dataResponse.ok) {
+        throw new Error(`Impossible de charger les données (${dataResponse.status})`);
+      }
 
-    const data = hours.map(h => genData(dayIdx, h));
-    const risks = data.map(d => riskLevel(d.dir, d.speed));
-    const maxRisk = Math.max(...risks);
-    row.style.background = ROW_WASH[maxRisk];
+      const data = await dataResponse.json();
+      const hourly = data?.hourly;
 
-    // chart
-    const chartCell = document.createElement("div");
-    chartCell.className = "chart-cell";
-    const W = 24, H = 46;
-    const pts = data.map((d,i) => {
-      const x = i + 0.5;
-      const y = H - (Math.min(d.speed, SPEED_MAX)/SPEED_MAX) * (H-6) - 3;
-      return [x,y];
-    });
-    const line = pts.map((p,i) => (i===0?"M":"L") + p[0] + "," + p[1].toFixed(1)).join(" ");
-    const area = line + ` L${W},${H} L0,${H} Z`;
+      if (!hourly || !Array.isArray(hourly.time) || !Array.isArray(hourly.wind_speed_80m) || !Array.isArray(hourly.wind_direction_80m)) {
+        throw new Error("Structure JSON invalide.");
+      }
 
-    // gradient stops follow the risk level at each hour, so the curve's color
-    // echoes the arrow row underneath it instead of staying a flat purple
-    const stops = risks.map((r,i) => {
-      const offset = ((i + 0.5) / W * 100).toFixed(1) + "%";
-      return { offset, stroke: STROKE_COLOR[r], fill: FILL_COLOR[r] };
-    });
-    const strokeStops = stops.map(s => `<stop offset="${s.offset}" stop-color="${s.stroke}"/>`).join("");
-    const fillStops = stops.map(s => `<stop offset="${s.offset}" stop-color="${s.fill}"/>`).join("");
+      const days = groupByDay(hourly);
+      const SPEED_MAX = 45;
 
-    chartCell.innerHTML = `
-      <svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="none">
-        <defs>
-          <linearGradient id="stroke${dayIdx}" x1="0" y1="0" x2="${W}" y2="0" gradientUnits="userSpaceOnUse">
-            ${strokeStops}
-          </linearGradient>
-          <linearGradient id="fill${dayIdx}" x1="0" y1="0" x2="${W}" y2="0" gradientUnits="userSpaceOnUse">
-            ${fillStops}
-          </linearGradient>
-        </defs>
-        <path d="${area}" fill="url(#fill${dayIdx})" stroke="none"/>
-        <path d="${line}" fill="none" stroke="url(#stroke${dayIdx})" stroke-width="0.9" vector-effect="non-scaling-stroke"/>
-      </svg>`;
-    row.appendChild(chartCell);
+      // Update banner with critical window
+      const criticalWindow = findCriticalWindow(days);
+      if (criticalWindow) {
+        bannerText.innerHTML = `Prochain créneau critique&nbsp;: <strong>${criticalWindow}</strong><small>Vent de Nord soutenu attendu — préparer la suspension des expériences sensibles.</small>`;
+        banner.style.display = "flex";
+      }
 
-    // arrows
-    const arrowRow = document.createElement("div");
-    arrowRow.className = "arrow-row";
-    data.forEach((d, h) => {
-      const risk = riskLevel(d.dir, d.speed);
-      const cell = document.createElement("div");
-      cell.className = "arrow-cell risk-" + risk;
-      cell.style.background = "var(--risk-" + risk + ")";
-      if (dayIdx === NOW_DAY && h === NOW_HOUR) cell.classList.add("now");
-      cell.title = `${day.label} ${String(h).padStart(2,"0")}h — ${d.speed} km/h, ${Math.round(d.dir)}°`;
-      const rotation = (d.dir + 90) % 360;
-      const span = document.createElement("span");
-      span.className = "arrow";
-      span.textContent = "➨";
-      span.style.fontSize = arrowSize(d.speed) + "px";
-      span.style.transform = "rotate(" + rotation + "deg)";
-      cell.appendChild(span);
-      arrowRow.appendChild(cell);
-    });
-    row.appendChild(arrowRow);
+      // Find current hour (use first hour of data as reference)
+      const NOW_HOUR = new Date(days[0].hours[0].iso).getHours();
+      const NOW_DAY = 0;
 
-    board.appendChild(row);
-  });
+      // Axis
+      const axis = document.createElement("div");
+      axis.className = "hour-axis";
+      const spacer = document.createElement("div");
+      spacer.className = "spacer";
+      axis.appendChild(spacer);
+      for (let h = 0; h < 24; h++) {
+        const span = document.createElement("span");
+        span.textContent = String(h).padStart(2,"0");
+        if (h === NOW_HOUR) span.classList.add("now");
+        axis.appendChild(span);
+      }
+      board.appendChild(axis);
+
+      // Days
+      days.forEach((day, dayIdx) => {
+        const row = document.createElement("div");
+        row.className = "day-row";
+
+        const label = document.createElement("div");
+        label.className = "day-label";
+        label.innerHTML = formatDate(day.date).split(' ').slice(0, 1).join(' ') + '<span class="sub">' + formatDate(day.date).split(' ').slice(1).join(' ') + '</span>';
+        row.appendChild(label);
+
+        // Only show first 24 hours of data
+        const data = day.hours.slice(0, 24);
+        const risks = data.map(d => riskLevel(d.direction, d.speed));
+        const maxRisk = Math.max(...risks);
+        row.style.background = ROW_WASH[maxRisk];
+
+        // Chart
+        const chartCell = document.createElement("div");
+        chartCell.className = "chart-cell";
+        const W = 24, H = 46;
+        const pts = data.map((d, i) => {
+          const x = i + 0.5;
+          const y = H - (Math.min(d.speed, SPEED_MAX)/SPEED_MAX) * (H-6) - 3;
+          return [x,y];
+        });
+        const line = pts.map((p,i) => (i===0?"M":"L") + p[0] + "," + p[1].toFixed(1)).join(" ");
+        const area = line + ` L${W},${H} L0,${H} Z`;
+
+        const stops = risks.map((r,i) => {
+          const offset = ((i + 0.5) / W * 100).toFixed(1) + "%";
+          return { offset, stroke: STROKE_COLOR[r], fill: FILL_COLOR[r] };
+        });
+        const strokeStops = stops.map(s => `<stop offset="${s.offset}" stop-color="${s.stroke}"/>`).join("");
+        const fillStops = stops.map(s => `<stop offset="${s.offset}" stop-color="${s.fill}"/>`).join("");
+
+        chartCell.innerHTML = `
+          <svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="none">
+            <defs>
+              <linearGradient id="stroke${dayIdx}" x1="0" y1="0" x2="${W}" y2="0" gradientUnits="userSpaceOnUse">
+                ${strokeStops}
+              </linearGradient>
+              <linearGradient id="fill${dayIdx}" x1="0" y1="0" x2="${W}" y2="0" gradientUnits="userSpaceOnUse">
+                ${fillStops}
+              </linearGradient>
+            </defs>
+            <path d="${area}" fill="url(#fill${dayIdx})" stroke="none"/>
+            <path d="${line}" fill="none" stroke="url(#stroke${dayIdx})" stroke-width="0.9" vector-effect="non-scaling-stroke"/>
+          </svg>`;
+        row.appendChild(chartCell);
+
+        // Arrows
+        const arrowRow = document.createElement("div");
+        arrowRow.className = "arrow-row";
+        data.forEach((d, h) => {
+          const risk = riskLevel(d.direction, d.speed);
+          const cell = document.createElement("div");
+          cell.className = "arrow-cell risk-" + risk;
+          cell.style.background = "var(--risk-" + risk + ")";
+          if (dayIdx === NOW_DAY && h === NOW_HOUR) cell.classList.add("now");
+          cell.title = `${d.time} — ${d.speed} km/h, ${Math.round(d.direction)}°`;
+          const rotation = (d.direction + 90) % 360;
+          const span = document.createElement("span");
+          span.className = "arrow";
+          span.textContent = "➨";
+          span.style.fontSize = arrowSize(d.speed) + "px";
+          span.style.transform = "rotate(" + rotation + "deg)";
+          cell.appendChild(span);
+          arrowRow.appendChild(cell);
+        });
+        row.appendChild(arrowRow);
+
+        board.appendChild(row);
+      });
+
+      footer.textContent = "Données de Open Meteo (mise à jour toutes les heures)";
+    } catch (err) {
+      board.innerHTML = `<div class="error">${err.message}</div>`;
+      footer.textContent = "Erreur lors du chargement des données";
+      console.error(err);
+    }
+  }
+
+  main();
 </script>
 
 </body>
