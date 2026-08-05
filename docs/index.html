@@ -45,13 +45,23 @@
     letter-spacing: -0.01em;
   }
   header p{
-    margin:0;
+    margin:0 0 12px;
     color: var(--ink-dim);
     font-size: 0.86rem;
   }
   header a{
     color: var(--ink);
     text-decoration: underline;
+  }
+  header .info{
+    color: var(--ink-dim);
+    font-size: 0.82rem;
+    line-height: 1.6;
+    margin: 0;
+  }
+  header .info strong{
+    color: var(--ink);
+    font-weight: 600;
   }
 
   .banner{
@@ -185,13 +195,32 @@
     line-height: 1;
   }
 
-  .legend-arrows{
-    display:flex; align-items:center; gap:16px;
-    padding: 6px 20px 24px;
+  .legend-section{
+    padding: 6px 20px;
     font-size: 0.76rem;
     color: var(--ink-dim);
   }
+  .legend-section strong{
+    color: var(--ink);
+  }
+
+  .legend-arrows{
+    display:flex; align-items:center; gap:16px;
+    padding: 2px 20px 0;
+    flex-wrap: wrap;
+  }
   .legend-arrows .sample{ display:flex; align-items:center; gap:6px; }
+
+  .legend-risks{
+    display:flex; align-items:center; gap:20px;
+    padding: 2px 20px 24px;
+    flex-wrap: wrap;
+  }
+  .legend-risks .item{ display:flex; align-items:center; gap:8px; font-size: 0.75rem; }
+  .legend-risks .label{ display:flex; flex-direction:column; gap:2px; }
+  .legend-risks .label strong{ font-weight: 600; color: var(--ink); }
+  .legend-risks .label .threshold{ font-size: 0.68rem; color: var(--ink-dim); }
+  .legend-risks .label .note{ font-size: 0.65rem; color: var(--ink-dim); font-style: italic; }
 
   footer{
     padding: 8px 20px 30px;
@@ -220,6 +249,9 @@
 <header>
   <h1>Prévisions Vent — ENS</h1>
   <p>Courbe = vitesse du vent. Flèches = direction (vers laquelle il souffle). Fond des flèches = niveau de risque (secteur Nord). Données de <a href="https://open-meteo.com/" target="_blank">Open Meteo</a></p>
+  <div class="info">
+    <strong>Distinction Alerte / Critique :</strong> Tous deux correspondent à un vent ≥ 30 km/h. La différence : l'<strong>Alerte</strong> peut être ponctuelle, tandis que le <strong>Critique</strong> indique un vent soutenu pendant <strong>au moins 4 heures consécutives</strong>.
+  </div>
 </header>
 
 <div class="banner" id="banner" style="display:none;">
@@ -238,10 +270,45 @@
   <div class="board" id="board"></div>
 </div>
 
+<div class="legend-section">Taille des flèches par vitesse du vent :</div>
 <div class="legend-arrows">
-  <span class="sample"><span class="arrow" style="font-size:12px">➨</span> vent faible</span>
-  <span class="sample"><span class="arrow" style="font-size:16px">➨</span> vent modéré</span>
-  <span class="sample"><span class="arrow" style="font-size:20px">➨</span> vent fort</span>
+  <span class="sample"><span class="arrow" style="font-size:12px">➨</span> < 15 km/h</span>
+  <span class="sample"><span class="arrow" style="font-size:16px">➨</span> 15–30 km/h</span>
+  <span class="sample"><span class="arrow" style="font-size:20px">➨</span> ≥ 30 km/h</span>
+</div>
+
+<div class="legend-section">Seuils de risque (vent de secteur Nord uniquement) :</div>
+<div class="legend-risks">
+  <div class="item">
+    <div class="swatch" style="background:var(--risk-0)"></div>
+    <div class="label">
+      <strong>Neutre</strong>
+      <span class="threshold">< 15 km/h</span>
+    </div>
+  </div>
+  <div class="item">
+    <div class="swatch" style="background:var(--risk-1)"></div>
+    <div class="label">
+      <strong>Vigilance</strong>
+      <span class="threshold">15–30 km/h</span>
+    </div>
+  </div>
+  <div class="item">
+    <div class="swatch" style="background:var(--risk-2)"></div>
+    <div class="label">
+      <strong>Alerte</strong>
+      <span class="threshold">≥ 30 km/h</span>
+      <span class="note">ponctuel</span>
+    </div>
+  </div>
+  <div class="item">
+    <div class="swatch" style="background:var(--risk-3)"></div>
+    <div class="label">
+      <strong>Critique</strong>
+      <span class="threshold">≥ 30 km/h</span>
+      <span class="note">4h consécutives+</span>
+    </div>
+  </div>
 </div>
 
 <footer id="footer">Chargement des données...</footer>
