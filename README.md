@@ -16,7 +16,9 @@ Chaque ligne correspond à une journée et présente :
 - le niveau de risque par fond coloré ;
 - une infobulle au survol de la courbe ou d'une flèche, avec heure, vitesse, direction et niveau de risque ;
 - un repère sur l'heure courante et la journée courante ;
-- un bandeau indiquant le prochain créneau critique, lorsqu'il existe.
+- un bandeau indiquant le premier créneau Critique à venir ou, en l'absence de Critique, le premier créneau Alerte.
+
+Le bandeau affiche uniquement le premier créneau correspondant. D'autres créneaux critiques restent visibles dans les lignes horaires mais ne sont pas énumérés dans cet avertissement.
 
 Les jours à vitesse modérée utilisent une échelle de courbe plafonnée à 45 km/h. Pour les jours plus venteux, l'échelle s'étend automatiquement avec une marge, par paliers de 10 km/h.
 
@@ -28,8 +30,8 @@ Le secteur Nord comprend les directions météo de **292,5° à 67,5°**, en tra
 | --- | --- | --- |
 | Neutre | Hors secteur Nord ou vitesse < 25 km/h | Petite flèche, fond sombre |
 | Vigilance | 25 à < 40 km/h | Flèche moyenne, fond ambre |
-| Alerte | ≥ 40 km/h pendant moins de 4 h consécutives | Grande flèche, fond rouge |
-| Critique | ≥ 40 km/h pendant au moins 4 h consécutives | Flèche `↠`, fond rouge et liseré pulsé |
+| Alerte | 40 à < 60 km/h pendant moins de 4 h consécutives | Grande flèche, fond rouge |
+| Critique | **High Wind** : ≥ 60 km/h, même pendant une seule heure ; ou 40 à < 60 km/h pendant au moins 4 h consécutives | Flèche `↠`, fond rouge et liseré pulsé |
 
 Les niveaux **Alerte** et **Critique** partagent volontairement la même couleur rouge ; leur glyphe et l'emphase du niveau critique permettent de les distinguer.
 
@@ -39,12 +41,26 @@ Toute la configuration métier et de démonstration est regroupée dans `CONFIG`
 
 - URL Open-Meteo et coordonnées du site ;
 - limites angulaires du "secteur Nord" ;
-- seuils de vitesse et durée critique ;
+- seuils de vitesse, seuil High Wind et durée critique ;
 - styles de flèche par niveau ;
 - échelle de base de la courbe (`chartMaxSpeedKmh`) ;
 - vitesses et directions de la ligne d'exemple.
 
 Les risques de la ligne d'exemple sont calculés à partir de ses vitesses et directions avec la même logique que les données réelles ; ils ne sont pas maintenus séparément.
+
+### Simulation du bandeau d'alerte
+
+Pour utiliser la ligne `Exemple` comme source du bandeau d'alerte pendant un test, exécuter dans la console du navigateur :
+
+```js
+setAlertSimulation(true)
+```
+
+La page se recharge et affiche le créneau issu de la ligne d'exemple. Pour revenir aux prévisions réelles :
+
+```js
+setAlertSimulation(false)
+```
 
 ## Développement et publication
 

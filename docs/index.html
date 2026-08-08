@@ -1,532 +1,697 @@
 <!doctype html>
 <html lang="fr">
+
 <head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Prévisions Vent – ENS</title>
-<style>
-  :root{
-    --bg: #0a0f1a;
-    --panel: #0d1526;
-    --line: #1c2740;
-    --ink: #e8ecf5; 
-    --ink: #fefefe;
-    --ink-dim: #8a95ac;
-    --ink-dim: #fcfcfc;
-    --curve: #8f6fe0;
-    --curve-fill-a: rgba(143,111,224,0.35);
-    --curve-fill-b: rgba(143,111,224,0.02);
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Prévisions Vent – ENS</title>
+  <style>
+    :root {
+      --bg: #0a0f1a;
+      --panel: #0d1526;
+      --line: #1c2740;
+      --ink: #e8ecf5;
+      --ink: #fefefe;
+      --ink-dim: #8a95ac;
+      --ink-dim: #fcfcfc;
+      --curve: #8f6fe0;
+      --curve-fill-a: rgba(143, 111, 224, 0.35);
+      --curve-fill-b: rgba(143, 111, 224, 0.02);
 
-    --risk-0: #141d2e;
-    --risk-1: #9a6b13;
-    --risk-2: #b52d2d;
-    --risk-3: #b52d2d;
+      --risk-0: #141d2e;
+      --risk-1: #9a6b13;
+      --risk-2: #b52d2d;
+      --risk-3: #b52d2d;
 
-    --col-w: 40px;
-    --label-w: 78px;
-  }
+      --col-w: 40px;
+      --label-w: 78px;
+    }
 
-  * { box-sizing: border-box; }
+    * {
+      box-sizing: border-box;
+    }
 
-  body{
-    margin:0;
-    background: var(--bg);
-    color: var(--ink);
-    font-family: "Inter", "Segoe UI", system-ui, sans-serif;
-    -webkit-font-smoothing: antialiased;
-  }
+    body {
+      margin: 0;
+      background: var(--bg);
+      color: var(--ink);
+      font-family: "Inter", "Segoe UI", system-ui, sans-serif;
+      -webkit-font-smoothing: antialiased;
+    }
 
-  header{
-    padding: 26px 20px 16px;
-    border-bottom: 1px solid var(--line);
-  }
-  header h1{
-    margin: 0 0 4px;
-    font-size: 1.35rem;
-    font-weight: 700;
-    letter-spacing: -0.01em;
-  }
-  header p{
-    margin:0 0 12px;
-    color: var(--ink-dim);
-    font-size: 0.86rem;
-  }
-  header a{
-    color: var(--ink);
-    text-decoration: underline;
-  }
-  header .info{
-    color: var(--ink-dim);
-    font-size: 0.82rem;
-    line-height: 1.6;
-    margin: 0;
-  }
-  header .info strong{
-    color: var(--ink);
-    font-weight: 600;
-  }
+    header {
+      padding: 26px 20px 16px;
+      border-bottom: 1px solid var(--line);
+    }
 
-  .banner{
-    margin: 16px 20px 0;
-    padding: 12px 16px;
-    border-radius: 10px;
-    background: var(--risk-3);
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    font-size: 0.9rem;
-    font-weight: 600;
-  }
-  .banner .dot{
-    width:8px; height:8px; border-radius:50%;
-    background: #fff;
-    box-shadow: 0 0 8px 2px rgba(255,255,255,0.6);
-    flex: 0 0 auto;
-  }
-  .banner small{
-    display:block;
-    font-weight: 400;
-    color: rgba(255,255,255,0.8);
-    margin-top: 2px;
-  }
+    header h1 {
+      margin: 0 0 4px;
+      font-size: 1.35rem;
+      font-weight: 700;
+      letter-spacing: -0.01em;
+    }
 
-  .swatch{ width:12px; height:12px; border-radius:3px; display:inline-block; }
+    header p {
+      margin: 0 0 12px;
+      color: var(--ink-dim);
+      font-size: 0.86rem;
+    }
 
-  .risk-table{
-    width: 100%;
-    max-width: 920px;
-    margin-top: 14px;
-    border-collapse: collapse;
-    color: var(--ink-dim);
-    font-size: 0.76rem;
-  }
-  .risk-table th,
-  .risk-table td{
-    padding: 7px 8px;
-    border-top: 1px solid var(--line);
-    text-align: left;
-    vertical-align: middle;
-  }
-  .risk-table th{
-    color: var(--ink);
-    font-weight: 600;
-  }
-  .risk-table .level{ color: var(--ink); font-weight: 600; }
-  .risk-table .swatch{ vertical-align: middle; }
-  .risk-table .arrow-example{ color: var(--ink); line-height: 1; vertical-align: middle; }
-  .scroller{
-    overflow-x: auto;
-    padding-bottom: 20px;
-  }
+    header a {
+      color: var(--ink);
+      text-decoration: underline;
+    }
 
-  .board{
-    min-width: calc(var(--label-w) + 24 * var(--col-w));
-    padding: 14px 20px 0;
-  }
+    header .info {
+      color: var(--ink-dim);
+      font-size: 0.82rem;
+      line-height: 1.6;
+      margin: 0;
+    }
 
-  .hour-axis{
-    display: grid;
-    grid-template-columns: var(--label-w) repeat(24, var(--col-w));
-    position: sticky;
-    top: 0;
-    background: var(--bg);
-    z-index: 3;
-    padding-bottom: 4px;
-  }
-  .hour-axis .spacer{ }
-  .hour-axis span{
-    text-align: center;
-    font-size: 0.65rem;
-    color: var(--ink-dim);
-  }
-  .hour-axis span.now{ color: var(--ink); font-weight: 700; }
+    header .info strong {
+      color: var(--ink);
+      font-weight: 600;
+    }
 
-  .day-row{
-    display: grid;
-    grid-template-columns: var(--label-w) repeat(24, var(--col-w));
-    align-items: end;
-    border-top: 1px solid var(--line);
-    padding: 10px 0 8px;
-    border-radius: 8px;
-    transition: background 0.2s ease;
-  }
-  .day-row:last-child{ border-bottom: 1px solid var(--line); }
+    .banner {
+      margin: 16px 20px 0;
+      padding: 12px 16px;
+      border-radius: 10px;
+      background: var(--risk-3);
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-size: 0.9rem;
+      font-weight: 600;
+    }
 
-  .day-label{
-    display:flex;
-    flex-direction: column;
-    justify-content: center;
-    padding-right: 8px;
-    font-size: 0.82rem;
-    font-weight: 600;
-    line-height: 1.3;
-  }
-  .day-label .sub{
-    font-weight: 400;
-    color: var(--ink-dim);
-    font-size: 0.68rem;
-  }
+    .banner .dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: #fff;
+      box-shadow: 0 0 8px 2px rgba(255, 255, 255, 0.6);
+      flex: 0 0 auto;
+    }
 
-  .chart-cell{
-    grid-column: 2 / span 24;
-    position: relative;
-    height: 46px;
-  }
-  .chart-cell svg{ display:block; width:100%; height:100%; overflow: visible; }
-  .chart-tooltip{
-    position: absolute;
-    z-index: 2;
-    max-width: 260px;
-    padding: 5px 7px;
-    border: 1px solid var(--line);
-    border-radius: 4px;
-    background: #111a2d;
-    color: var(--ink);
-    font-size: 0.7rem;
-    line-height: 1.3;
-    pointer-events: none;
-    transform: translate(-50%, calc(-100% - 4px));
-    white-space: nowrap;
-  }
+    .banner small {
+      display: block;
+      font-weight: 400;
+      color: rgba(255, 255, 255, 0.8);
+      margin-top: 2px;
+    }
 
-  .arrow-row{
-    grid-column: 2 / span 24;
-    display: grid;
-    grid-template-columns: repeat(24, var(--col-w));
-    margin-top: 2px;
-    border-radius: 6px;
-    overflow: hidden;
-  }
-  .arrow-cell{
-    height: 28px;
-    display:flex;
-    align-items:center;
-    justify-content:center;
-    position: relative;
-  }
-  .arrow-cell.now::before{
-    content:"";
-    position:absolute; inset:0;
-    box-shadow: inset 0 0 0 2px #fff, 0 0 10px rgba(255,255,255,0.9);
-    z-index: 1;
-    pointer-events: none;
-  }
-  .arrow-cell.risk-3::after{
-    content:"";
-    position:absolute; inset:1px;
-    border-radius: 3px;
-    border: 1px solid rgba(255,255,255,0.4);
-    animation: pulse 2.2s ease-in-out infinite;
-  }
-  @keyframes pulse{ 0%,100%{opacity:.35;} 50%{opacity:.9;} }
+    .swatch {
+      width: 12px;
+      height: 12px;
+      border-radius: 3px;
+      display: inline-block;
+    }
 
-  .arrow{
-    display:inline-block;
-    color:#f4f6fb;
-    color:#fafafa;    
-    line-height: 1;
-  }
+    .risk-table {
+      width: 100%;
+      max-width: 920px;
+      margin-top: 14px;
+      border-collapse: collapse;
+      color: var(--ink-dim);
+      font-size: 0.76rem;
+    }
 
-  footer{
-    padding: 8px 20px 30px;
-    color: var(--ink-dim);
-    font-size: 0.7rem;
-  }
+    .risk-table th,
+    .risk-table td {
+      padding: 7px 8px;
+      border-top: 1px solid var(--line);
+      text-align: left;
+      vertical-align: middle;
+    }
 
-  .error {
-    margin: 24px;
-    padding: 16px;
-    border: 1px solid #7f1d1d;
-    background: #450a0a;
-    border-radius: 12px;
-    color: #fecaca;
-    white-space: pre-wrap;
-    font-size: 0.85rem;
-  }
+    .risk-table th {
+      color: var(--ink);
+      font-weight: 600;
+    }
 
-  @media (prefers-reduced-motion: reduce){
-    .arrow-cell.risk-3::after{ animation:none; opacity:.7; }
-  }
-</style>
+    .risk-table .level {
+      color: var(--ink);
+      font-weight: 600;
+    }
+
+    .risk-table .swatch {
+      vertical-align: middle;
+    }
+
+    .risk-table .arrow-example {
+      color: var(--ink);
+      line-height: 1;
+      vertical-align: middle;
+    }
+
+    .scroller {
+      overflow-x: auto;
+      padding-bottom: 20px;
+    }
+
+    .board {
+      min-width: calc(var(--label-w) + 24 * var(--col-w));
+      padding: 14px 20px 0;
+    }
+
+    .hour-axis {
+      display: grid;
+      grid-template-columns: var(--label-w) repeat(24, var(--col-w));
+      position: sticky;
+      top: 0;
+      background: var(--bg);
+      z-index: 3;
+      padding-bottom: 4px;
+    }
+
+    .hour-axis .spacer {}
+
+    .hour-axis span {
+      text-align: center;
+      font-size: 0.65rem;
+      color: var(--ink-dim);
+    }
+
+    .hour-axis span.now {
+      color: var(--ink);
+      font-weight: 700;
+    }
+
+    .day-row {
+      display: grid;
+      grid-template-columns: var(--label-w) repeat(24, var(--col-w));
+      align-items: end;
+      border-top: 1px solid var(--line);
+      padding: 10px 0 8px;
+      border-radius: 8px;
+      transition: background 0.2s ease;
+    }
+
+    .day-row:last-child {
+      border-bottom: 1px solid var(--line);
+    }
+
+    .day-label {
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      padding-right: 8px;
+      font-size: 0.82rem;
+      font-weight: 600;
+      line-height: 1.3;
+    }
+
+    .day-label .sub {
+      font-weight: 400;
+      color: var(--ink-dim);
+      font-size: 0.68rem;
+    }
+
+    .chart-cell {
+      grid-column: 2 / span 24;
+      position: relative;
+      height: 46px;
+    }
+
+    .chart-cell svg {
+      display: block;
+      width: 100%;
+      height: 100%;
+      overflow: visible;
+    }
+
+    .chart-tooltip {
+      position: absolute;
+      z-index: 2;
+      max-width: 260px;
+      padding: 5px 7px;
+      border: 1px solid var(--line);
+      border-radius: 4px;
+      background: #111a2d;
+      color: var(--ink);
+      font-size: 0.7rem;
+      line-height: 1.3;
+      pointer-events: none;
+      transform: translate(-50%, calc(-100% - 4px));
+      white-space: nowrap;
+    }
+
+    .arrow-row {
+      grid-column: 2 / span 24;
+      display: grid;
+      grid-template-columns: repeat(24, var(--col-w));
+      margin-top: 2px;
+      border-radius: 6px;
+      overflow: hidden;
+    }
+
+    .arrow-cell {
+      height: 28px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      position: relative;
+    }
+
+    .arrow-cell.now::before {
+      content: "";
+      position: absolute;
+      inset: 0;
+      box-shadow: inset 0 0 0 2px #fff, 0 0 10px rgba(255, 255, 255, 0.9);
+      z-index: 1;
+      pointer-events: none;
+    }
+
+    .arrow-cell.risk-3::after {
+      content: "";
+      position: absolute;
+      inset: 1px;
+      border-radius: 3px;
+      border: 1px solid rgba(255, 255, 255, 0.4);
+      animation: pulse 2.2s ease-in-out infinite;
+    }
+
+    @keyframes pulse {
+
+      0%,
+      100% {
+        opacity: .35;
+      }
+
+      50% {
+        opacity: .9;
+      }
+    }
+
+    .arrow {
+      display: inline-block;
+      color: #f4f6fb;
+      color: #fafafa;
+      line-height: 1;
+    }
+
+    footer {
+      padding: 8px 20px 30px;
+      color: var(--ink-dim);
+      font-size: 0.7rem;
+    }
+
+    .error {
+      margin: 24px;
+      padding: 16px;
+      border: 1px solid #7f1d1d;
+      background: #450a0a;
+      border-radius: 12px;
+      color: #fecaca;
+      white-space: pre-wrap;
+      font-size: 0.85rem;
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      .arrow-cell.risk-3::after {
+        animation: none;
+        opacity: .7;
+      }
+    }
+  </style>
 </head>
+
 <body>
 
-<header>
-  <h1>Prévisions Vent – ENS</h1>
-  <p>Courbe = vitesse du vent. Flèches = direction (vers laquelle il souffle). Fond des flèches = niveau de risque (secteur Nord). Données de <a href="https://open-meteo.com/" target="_blank">Open Meteo</a></p>
-  <table class="risk-table" id="riskTable"></table>
-</header>
+  <header>
+    <h1>Prévisions Vent – ENS</h1>
+    <p>Courbe = vitesse du vent. Flèches = direction (vers laquelle il souffle). Fond des flèches = niveau de risque
+      (secteur Nord). Données de <a href="https://open-meteo.com/" target="_blank">Open Meteo</a></p>
+    <table class="risk-table" id="riskTable"></table>
+  </header>
 
-<div class="banner" id="banner" style="display:none;">
-  <span class="dot"></span>
-  <div id="bannerText"></div>
-</div>
+  <div class="banner" id="banner" style="display:none;">
+    <span class="dot"></span>
+    <div id="bannerText"></div>
+  </div>
 
-<div class="scroller">
-  <div class="board" id="board"></div>
-</div>
+  <div class="scroller">
+    <div class="board" id="board"></div>
+  </div>
 
-<footer id="footer">Chargement des données...</footer>
+  <footer id="footer">Chargement des données...</footer>
 
-<script>
-  const CONFIG = {
-    dataUrl: "https://api.open-meteo.com/v1/forecast?latitude=48.8627&longitude=2.2875&hourly=wind_speed_80m,wind_direction_80m&timezone=auto&forecast_days=10",
-    northSectorWnwDeg: 292.5,
-    northSectorEneDeg: 67.5,
-    risk: {
-      vigilanceSpeedKmh: 25,
-      alertSpeedKmh: 40,
-      criticalDurationHours: 4,
-      levels: {
-        0: { name: "Neutre", condition: "Hors secteur Nord ou < 25 km/h", description: "Aucune action requise" },
-        1: { name: "Vigilance", condition: "25–< 40 km/h", description: "Surveiller : les conditions peuvent se dégrader" },
-        2: { name: "Alerte", condition: "≥ 40 km/h, moins de 4 h consécutives", description: "Vent fort ; les opérations peuvent continuer, mais la situation peut empirer" },
-        3: { name: "Critique", condition: "≥ 40 km/h pendant au moins 4 h consécutives", description: "Préparer la suspension des expériences sensibles" },
+  <script>
+    const CONFIG = {
+      dataUrl: "https://api.open-meteo.com/v1/forecast?latitude=48.8627&longitude=2.2875&hourly=wind_speed_80m,wind_direction_80m&timezone=auto&forecast_days=10",
+      northSectorWnwDeg: 292.5,
+      northSectorEneDeg: 67.5,
+      risk: {
+        vigilanceSpeedKmh: 25,
+        alertSpeedKmh: 40,
+        highWindSpeedKmh: 60,
+        criticalDurationHours: 4,
+        levels: {
+          0: { name: "Neutre", condition: "Hors secteur Nord ou < 25 km/h", description: "Aucune action requise" },
+          1: { name: "Vigilance", condition: "25–< 40 km/h", description: "Surveiller : les conditions peuvent se dégrader" },
+          2: { name: "Alerte", condition: "≥ 40 km/h, moins de 4 h consécutives", description: "Vent fort ; les opérations peuvent continuer, mais la situation peut empirer" },
+          3: { name: "Critique", condition: "≥ 60 km/h, ou ≥ 40 km/h pendant au moins 4 h consécutives", description: "Préparer la suspension des expériences sensibles" },
+        },
+        exampleWindDirectionsDeg: [
+          350, 170, 190, 25, 340, 15,
+          55, 310, 20, 345, 40, 320,
+          10, 340, 335, 30, 5, 340,
+          325, 45, 350, 20, 340, 40,
+        ],
+        exampleWindSpeedKmh: [
+          12, 14, 18, 20, 27, 31,
+          35, 38, 16, 22, 43, 46,
+          35, 39, 120, 35, 25, 25,
+          60, 70, 90, 98, 78, 68,
+        ],
       },
-      exampleWindDirectionsDeg: [
-        350, 170, 190, 25, 340, 15, 55, 310,
-        20, 345, 40, 320, 10, 340, 335, 30,
-        5, 340, 325, 45, 350, 20, 340, 40,
-      ],
-      exampleWindSpeedKmh: [
-        12, 14, 18, 20, 27, 31, 35, 38,
-        16, 22, 43, 46, 35, 39, 60, 65,
-        25, 25, 60, 70, 90, 98, 78, 68,
-      ],
-    },
-    arrow: {
-      chartMaxSpeedKmh: 45,
-      styles: {
-        0: { text: "→", sizePx: 12, label: "" },
-        1: { text: "→", sizePx: 18, label: "" },
-        2: { text: "→", sizePx: 30, label: "" },
-        3: { text: "↠", sizePx: 30, label: "" },
+      arrow: {
+        chartMaxSpeedKmh: 45,
+        styles: {
+          0: { text: "→", sizePx: 12, label: "" },
+          1: { text: "→", sizePx: 18, label: "" },
+          2: { text: "→", sizePx: 30, label: "" },
+          3: { text: "↠", sizePx: 30, label: "" },
+        },
       },
-    },
-  };
+      debug: {
+        useExampleForAlertBanner: localStorage.getItem("ens-north-wind:simulate-alert") === "true",
+      },
+    };
 
-  function isNorth(dir){ return dir >= CONFIG.northSectorWnwDeg || dir <= CONFIG.northSectorEneDeg; }
-  
-  function baseRiskLevel(dir, speed){
-    if (!isNorth(dir) || speed < CONFIG.risk.vigilanceSpeedKmh) return 0;
-    if (speed < CONFIG.risk.alertSpeedKmh) return 1;
-    return 2;
-  }
+    window.setAlertSimulation = enabled => {
+      localStorage.setItem("ens-north-wind:simulate-alert", String(Boolean(enabled)));
+      window.location.reload();
+    };
 
-  function annotateRisks(days) {
-    const hours = days.flatMap(day => day.hours);
-    let runStart = 0;
+    function isNorth(dir) { return dir >= CONFIG.northSectorWnwDeg || dir <= CONFIG.northSectorEneDeg; }
 
-    while (runStart < hours.length) {
+    function baseRiskLevel(dir, speed) {
+      if (!isNorth(dir) || speed < CONFIG.risk.vigilanceSpeedKmh) return 0;
+      if (speed < CONFIG.risk.alertSpeedKmh) return 1;
+      return 2;
+    }
+
+    function annotateRisks(days) {
+      const hours = days.flatMap(day => day.hours);
+      const isHighNorthWind = hour => isNorth(hour.direction) && hour.speed >= CONFIG.risk.highWindSpeedKmh;
       const isStrongNorthWind = hour => isNorth(hour.direction) && hour.speed >= CONFIG.risk.alertSpeedKmh;
-      if (!isStrongNorthWind(hours[runStart])) {
-        hours[runStart].risk = baseRiskLevel(hours[runStart].direction, hours[runStart].speed);
-        runStart++;
-        continue;
+      let runStart = 0;
+
+      while (runStart < hours.length) {
+        if (isHighNorthWind(hours[runStart])) {
+          hours[runStart].risk = 3;
+          runStart++;
+          continue;
+        }
+
+        if (!isStrongNorthWind(hours[runStart])) {
+          hours[runStart].risk = baseRiskLevel(hours[runStart].direction, hours[runStart].speed);
+          runStart++;
+          continue;
+        }
+
+        let runEnd = runStart;
+        while (runEnd < hours.length && isStrongNorthWind(hours[runEnd]) && !isHighNorthWind(hours[runEnd])) runEnd++;
+        const risk = runEnd - runStart >= CONFIG.risk.criticalDurationHours ? 3 : 2;
+        for (let i = runStart; i < runEnd; i++) hours[i].risk = risk;
+        runStart = runEnd;
       }
-
-      let runEnd = runStart;
-      while (runEnd < hours.length && isStrongNorthWind(hours[runEnd])) runEnd++;
-      const risk = runEnd - runStart >= CONFIG.risk.criticalDurationHours ? 3 : 2;
-      for (let i = runStart; i < runEnd; i++) hours[i].risk = risk;
-      runStart = runEnd;
-    }
-  }
-  
-  function arrowStyle(risk){
-    return CONFIG.arrow.styles[risk];
-  }
-
-  function chartTopSpeedKmh(hours) {
-    const maxSpeedKmh = Math.max(...hours.map(hour => hour.speed));
-    if (maxSpeedKmh <= CONFIG.arrow.chartMaxSpeedKmh) return CONFIG.arrow.chartMaxSpeedKmh;
-    return Math.ceil((maxSpeedKmh + 5) / 10) * 10;
-  }
-
-  function hourTooltip(hour) {
-    const riskLabel = hour.risk > 0 ? ` — ${CONFIG.risk.levels[hour.risk].name}` : "";
-    return `${hour.time} — ${hour.speed} km/h, ${Math.round(hour.direction)}°${riskLabel}`;
-  }
-
-  function renderRiskTable() {
-    const { vigilanceSpeedKmh, alertSpeedKmh, criticalDurationHours } = CONFIG.risk;
-    const levels = CONFIG.risk.levels;
-    const arrowExample = risk => {
-      const { text, sizePx } = arrowStyle(risk);
-      return `<span class="arrow arrow-example" style="font-size:${sizePx}px">${text}</span>`;
-    };
-    document.getElementById("riskTable").innerHTML = `
-      <thead><tr><th colspan="2">Niveau de risque</th><th>Flèche</th><th>Condition (secteur Nord)</th><th>Interprétation</th></tr></thead>
-      <tbody>
-        <tr><td><span class="swatch" style="background:var(--risk-0)"></span></td><td class="level">${levels[0].name}</td><td>${arrowExample(0)}</td><td>Hors secteur Nord ou &lt; ${vigilanceSpeedKmh} km/h</td><td>${levels[0].description}</td></tr>
-        <tr><td><span class="swatch" style="background:var(--risk-1)"></span></td><td class="level">${levels[1].name}</td><td>${arrowExample(1)}</td><td>${vigilanceSpeedKmh}–&lt; ${alertSpeedKmh} km/h</td><td>${levels[1].description}</td></tr>
-        <tr><td><span class="swatch" style="background:var(--risk-2)"></span></td><td class="level">${levels[2].name}</td><td>${arrowExample(2)}</td><td>≥ ${alertSpeedKmh} km/h, moins de ${criticalDurationHours} h consécutives</td><td>${levels[2].description}</td></tr>
-        <tr><td><span class="swatch" style="background:var(--risk-3)"></span></td><td class="level">${levels[3].name}</td><td>${arrowExample(3)}</td><td>≥ ${alertSpeedKmh} km/h pendant au moins ${criticalDurationHours} h consécutives</td><td>${levels[3].description}</td></tr>
-      </tbody>`;
-  }
-
-  const STROKE_COLOR = { 0: "#8f6fe0", 1: "#f0b429", 2: "#ff5252", 3: "#ff5252" };
-  const FILL_COLOR   = { 0: "rgba(143,111,224,0.32)", 1: "rgba(240,180,41,0.30)", 2: "rgba(255,82,82,0.34)", 3: "rgba(255,82,82,0.34)" };
-  const ROW_WASH     = { 0: "transparent", 1: "rgba(240,180,41,0.11)", 2: "rgba(255,82,82,0.17)", 3: "rgba(255,82,82,0.17)" };
-
-  function groupByDay(hourly) {
-    const days = new Map();
-
-    for (let i = 0; i < hourly.time.length; i++) {
-      const iso = hourly.time[i];
-      const [date, hhmm] = iso.split("T");
-
-      if (!days.has(date)) days.set(date, []);
-
-      days.get(date).push({
-        iso,
-        date,
-        time: hhmm,
-        speed: hourly.wind_speed_80m[i],
-        direction: hourly.wind_direction_80m[i],
-      });
     }
 
-    return [...days.entries()].map(([date, hours]) => ({ date, hours }));
-  }
+    function arrowStyle(risk) {
+      return CONFIG.arrow.styles[risk];
+    }
 
-  function createExampleDay() {
-    const { exampleWindDirectionsDeg, exampleWindSpeedKmh } = CONFIG.risk;
-    const exampleDay = {
-      isExample: true,
-      label: "Exemple",
-      hours: exampleWindSpeedKmh.map((speed, hour) => ({
-        iso: `exempleT${String(hour).padStart(2, "0")}:00`,
-        date: "exemple",
-        time: `${String(hour).padStart(2, "0")}:00`,
-        speed,
-        direction: exampleWindDirectionsDeg[hour],
-      })),
-    };
-    annotateRisks([exampleDay]);
-    return exampleDay;
-  }
+    function chartTopSpeedKmh(hours) {
+      const maxSpeedKmh = Math.max(...hours.map(hour => hour.speed));
+      if (maxSpeedKmh <= CONFIG.arrow.chartMaxSpeedKmh) return CONFIG.arrow.chartMaxSpeedKmh;
+      return Math.ceil((maxSpeedKmh + 5) / 10) * 10;
+    }
 
-  function formatDate(dateStr) {
-    const d = new Date(dateStr + "T00:00:00");
-    const formattedDate = new Intl.DateTimeFormat("fr-FR", {
-      weekday: "long",
-      day: "2-digit",
-      month: "long",
-      year: "numeric"
-    }).format(d);
-    return formattedDate.charAt(0).toLocaleUpperCase("fr-FR") + formattedDate.slice(1);
-  }
+    function hourTooltip(hour) {
+      const riskLabel = hour.risk > 0 ? ` — ${CONFIG.risk.levels[hour.risk].name}` : "";
+      return `${hour.time} — ${hour.speed} km/h, ${Math.round(hour.direction)}°${riskLabel}`;
+    }
 
-  function findCriticalWindow(days) {
-    const hours = days.flatMap(day => day.hours);
-    const firstCriticalHour = hours.find(hour => hour.risk === 3);
-    if (!firstCriticalHour) return null;
+    function renderRiskTable() {
+      const { vigilanceSpeedKmh, alertSpeedKmh, highWindSpeedKmh, criticalDurationHours } = CONFIG.risk;
+      const levels = CONFIG.risk.levels;
+      const arrowExample = risk => {
+        const { text, sizePx } = arrowStyle(risk);
+        return `<span class="arrow arrow-example" style="font-size:${sizePx}px">${text}</span>`;
+      };
+      document.getElementById("riskTable").innerHTML = `
+          <thead>
+            <tr>
+              <th colspan="2">Niveau de risque</th>
+              <th>Flèche</th>
+              <th>Condition (secteur Nord)</th>
+              <th>Interprétation</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>
+                <span class="swatch" style="background:var(--risk-0)"></span>
+              </td>
+              <td class="level">${levels[0].name}</td>
+              <td>${arrowExample(0)}</td>
+              <td>Hors secteur Nord ou &lt; ${vigilanceSpeedKmh} km/h</td>
+              <td>${levels[0].description}</td>
+            </tr>
 
-    const dayLabel = new Intl.DateTimeFormat("fr-FR", { weekday: "long" }).format(new Date(firstCriticalHour.date + "T00:00:00"));
-    const startTime = firstCriticalHour.time.slice(0, 5);
-    const endHour = hours[hours.indexOf(firstCriticalHour) + CONFIG.risk.criticalDurationHours - 1];
-    return `${dayLabel} ${startTime}–${endHour.time.slice(0, 5)}`;
-  }
+            <tr>
+              <td>
+                <span class="swatch" style="background:var(--risk-1)"></span>
+              </td>
+              <td class="level">${levels[1].name}</td>
+              <td>${arrowExample(1)}</td>
+              <td>${vigilanceSpeedKmh}–&lt; ${alertSpeedKmh} km/h</td>
+              <td>${levels[1].description}</td>
+            </tr>
 
-  async function main() {
-    const board = document.getElementById("board");
-    const banner = document.getElementById("banner");
-    const bannerText = document.getElementById("bannerText");
-    const footer = document.getElementById("footer");
-    renderRiskTable();
+            <tr>
+              <td>
+                <span class="swatch" style="background:var(--risk-2)"></span>
+              </td>
+              <td class="level">${levels[2].name}</td>
+              <td>${arrowExample(2)}</td>
+              <td>
+                ${alertSpeedKmh}–&lt; ${highWindSpeedKmh} km/h, moins de ${criticalDurationHours} h consécutives
+              </td>
+              <td>${levels[2].description}</td>
+            </tr>
 
-    try {
-      const dataResponse = await fetch(CONFIG.dataUrl);
+            <tr>
+              <td>
+                <span class="swatch" style="background:var(--risk-3)"></span>
+              </td>
+              <td class="level">${levels[3].name}</td>
+              <td>${arrowExample(3)}</td>
+              <td>
+                <strong>
+                  ≥ ${highWindSpeedKmh} km/h, OU ${alertSpeedKmh}–&lt; ${highWindSpeedKmh} km/h pendant au moins ${criticalDurationHours} h consécutives
+                </strong>
+              </td>
+              <td>${levels[3].description}</td>
+            </tr>
+          </tbody>
+        `;
+    }
 
-      if (!dataResponse.ok) {
-        throw new Error(`Impossible de charger les données (${dataResponse.status})`);
+    const STROKE_COLOR = { 0: "#8f6fe0", 1: "#f0b429", 2: "#ff5252", 3: "#ff5252" };
+    const FILL_COLOR = { 0: "rgba(143,111,224,0.32)", 1: "rgba(240,180,41,0.30)", 2: "rgba(255,82,82,0.34)", 3: "rgba(255,82,82,0.34)" };
+    const ROW_WASH = { 0: "transparent", 1: "rgba(240,180,41,0.11)", 2: "rgba(255,82,82,0.17)", 3: "rgba(255,82,82,0.17)" };
+
+    function groupByDay(hourly) {
+      const days = new Map();
+
+      for (let i = 0; i < hourly.time.length; i++) {
+        const iso = hourly.time[i];
+        const [date, hhmm] = iso.split("T");
+
+        if (!days.has(date)) days.set(date, []);
+
+        days.get(date).push({
+          iso,
+          date,
+          time: hhmm,
+          speed: hourly.wind_speed_80m[i],
+          direction: hourly.wind_direction_80m[i],
+        });
       }
 
-      const data = await dataResponse.json();
-      const hourly = data?.hourly;
+      return [...days.entries()].map(([date, hours]) => ({ date, hours }));
+    }
 
-      if (!hourly || !Array.isArray(hourly.time) || !Array.isArray(hourly.wind_speed_80m) || !Array.isArray(hourly.wind_direction_80m)) {
-        throw new Error("Structure JSON invalide.");
-      }
+    function createExampleDay() {
+      const { exampleWindDirectionsDeg, exampleWindSpeedKmh } = CONFIG.risk;
+      const exampleDay = {
+        isExample: true,
+        label: "Exemple",
+        hours: exampleWindSpeedKmh.map((speed, hour) => ({
+          iso: `exempleT${String(hour).padStart(2, "0")}:00`,
+          date: "exemple",
+          time: `${String(hour).padStart(2, "0")}:00`,
+          speed,
+          direction: exampleWindDirectionsDeg[hour],
+        })),
+      };
+      annotateRisks([exampleDay]);
+      return exampleDay;
+    }
 
-      const days = groupByDay(hourly);
-      annotateRisks(days);
-      const displayDays = [createExampleDay(), ...days];
-      // Update banner with critical window
-      const criticalWindow = findCriticalWindow(days);
-      if (criticalWindow) {
-        bannerText.innerHTML = `Prochain créneau critique&nbsp;: <strong>${criticalWindow}</strong><small>Vent de Nord soutenu attendu — préparer la suspension des expériences sensibles.</small>`;
-        banner.style.display = "flex";
-      }
-
-      // Find the current date and hour in the timezone used by the forecast.
-      const dateTimeParts = new Intl.DateTimeFormat("en-CA", {
-        timeZone: data.timezone,
-        year: "numeric",
-        month: "2-digit",
+    function formatDate(dateStr) {
+      const d = new Date(dateStr + "T00:00:00");
+      const formattedDate = new Intl.DateTimeFormat("fr-FR", {
+        weekday: "long",
         day: "2-digit",
-        hour: "2-digit",
-        hourCycle: "h23",
-      }).formatToParts(new Date());
-      const currentPart = type => dateTimeParts.find(part => part.type === type).value;
-      const NOW_DATE = `${currentPart("year")}-${currentPart("month")}-${currentPart("day")}`;
-      const NOW_HOUR = Number(currentPart("hour"));
-      const NOW_DAY = days.findIndex(day => day.date === NOW_DATE);
+        month: "long",
+        year: "numeric"
+      }).format(d);
+      return formattedDate.charAt(0).toLocaleUpperCase("fr-FR") + formattedDate.slice(1);
+    }
 
-      // Axis
-      const axis = document.createElement("div");
-      axis.className = "hour-axis";
-      const spacer = document.createElement("div");
-      spacer.className = "spacer";
-      axis.appendChild(spacer);
-      for (let h = 0; h < 24; h++) {
-        const span = document.createElement("span");
-        span.textContent = String(h).padStart(2,"0");
-        if (h === NOW_HOUR) span.classList.add("now");
-        axis.appendChild(span);
-      }
-      board.appendChild(axis);
+    function findCriticalWindow(days) {
+      const hours = days.flatMap(day => day.hours);
+      const firstCriticalIndex = hours.findIndex(hour => hour.risk === 3);
+      if (firstCriticalIndex === -1) return null;
 
-      // Days
-      displayDays.forEach((day, dayIdx) => {
-        const row = document.createElement("div");
-        row.className = "day-row";
+      let endCriticalIndex = firstCriticalIndex;
+      while (endCriticalIndex < hours.length && hours[endCriticalIndex].risk === 3) endCriticalIndex++;
 
-        const label = document.createElement("div");
-        label.className = "day-label";
-        label.innerHTML = day.isExample
-          ? day.label
-          : formatDate(day.date).split(' ').slice(0, 1).join(' ') + '<span class="sub">' + formatDate(day.date).split(' ').slice(1).join(' ') + '</span>';
-        row.appendChild(label);
+      const firstCriticalHour = hours[firstCriticalIndex];
+      const dayLabel = firstCriticalHour.date === "exemple"
+        ? "Exemple"
+        : new Intl.DateTimeFormat("fr-FR", { weekday: "long" }).format(new Date(firstCriticalHour.date + "T00:00:00"));
+      const startTime = firstCriticalHour.time.slice(0, 5);
+      const lastCriticalHour = hours[endCriticalIndex - 1];
+      const endTime = `${String((Number(lastCriticalHour.time.slice(0, 2)) + 1) % 24).padStart(2, "0")}:00`;
+      return `${dayLabel} ${startTime}–${endTime}`;
+    }
 
-        // Only show first 24 hours of data
-        const data = day.hours.slice(0, 24);
-        const risks = data.map(d => d.risk);
-        const maxRisk = Math.max(...risks);
-        row.style.background = ROW_WASH[maxRisk];
+    function findAlertWindow(days) {
+      const hours = days.flatMap(day => day.hours);
+      const firstAlertHour = hours.find(hour => hour.risk === 2);
+      if (!firstAlertHour) return null;
 
-        // Chart
-        const chartCell = document.createElement("div");
-        chartCell.className = "chart-cell";
-        const W = 24, H = 46;
-        const topSpeedKmh = chartTopSpeedKmh(data);
-        const pts = data.map((d, i) => {
-          const x = Number(d.time.slice(0, 2)) + 0.5;
-          const y = H - (d.speed / topSpeedKmh) * (H-6) - 3;
-          return [x,y];
-        });
-        const line = pts.map((p,i) => (i===0?"M":"L") + p[0] + "," + p[1].toFixed(1)).join(" ");
-        const area = line + ` L${W},${H} L0,${H} Z`;
+      const dayLabel = firstAlertHour.date === "exemple"
+        ? "Exemple"
+        : new Intl.DateTimeFormat("fr-FR", { weekday: "long" }).format(new Date(firstAlertHour.date + "T00:00:00"));
+      return `${dayLabel} ${firstAlertHour.time.slice(0, 5)}`;
+    }
 
-        const stops = risks.map((r,i) => {
-          const offset = ((Number(data[i].time.slice(0, 2)) + 0.5) / W * 100).toFixed(1) + "%";
-          return { offset, stroke: STROKE_COLOR[r], fill: FILL_COLOR[r] };
-        });
-        const strokeStops = stops.map(s => `<stop offset="${s.offset}" stop-color="${s.stroke}"/>`).join("");
-        const fillStops = stops.map(s => `<stop offset="${s.offset}" stop-color="${s.fill}"/>`).join("");
+    async function main() {
+      const board = document.getElementById("board");
+      const banner = document.getElementById("banner");
+      const bannerText = document.getElementById("bannerText");
+      const footer = document.getElementById("footer");
+      renderRiskTable();
 
-        chartCell.innerHTML = `
+      try {
+        const dataResponse = await fetch(CONFIG.dataUrl);
+
+        if (!dataResponse.ok) {
+          throw new Error(`Impossible de charger les données (${dataResponse.status})`);
+        }
+
+        const data = await dataResponse.json();
+        const hourly = data?.hourly;
+
+        if (!hourly || !Array.isArray(hourly.time) || !Array.isArray(hourly.wind_speed_80m) || !Array.isArray(hourly.wind_direction_80m)) {
+          throw new Error("Structure JSON invalide.");
+        }
+
+        const days = groupByDay(hourly);
+        annotateRisks(days);
+        const exampleDay = createExampleDay();
+        const displayDays = [exampleDay, ...days];
+        // Prioritize the critical notification; otherwise show the first alert.
+        const bannerDays = CONFIG.debug.useExampleForAlertBanner ? [exampleDay] : days;
+        const criticalWindow = findCriticalWindow(bannerDays);
+        if (criticalWindow) {
+        bannerText.innerHTML = `Prochain créneau critique&nbsp;: <strong>${criticalWindow}</strong>
+          <small>Vent de Nord fort ou soutenu attendu — préparer la suspension des expériences sensibles.<br>
+            D'autres créneaux critiques peuvent être prévus mais ne sont pas affichés dans cet avertissement.</small>`;
+          banner.style.display = "flex";
+        } else {
+          const alertWindow = findAlertWindow(bannerDays);
+          if (alertWindow) {
+      bannerText.innerHTML = `Prochain créneau d'alerte&nbsp;: <strong>${alertWindow}</strong><small>Vent de Nord fort attendu — surveiller l'évolution des conditions.</small>`;
+            banner.style.display = "flex";
+          }
+        }
+
+        // Find the current date and hour in the timezone used by the forecast.
+        const dateTimeParts = new Intl.DateTimeFormat("en-CA", {
+          timeZone: data.timezone,
+          year: "numeric",
+          month: "2-digit",
+          day: "2-digit",
+          hour: "2-digit",
+          hourCycle: "h23",
+        }).formatToParts(new Date());
+        const currentPart = type => dateTimeParts.find(part => part.type === type).value;
+        const NOW_DATE = `${currentPart("year")}-${currentPart("month")}-${currentPart("day")}`;
+        const NOW_HOUR = Number(currentPart("hour"));
+        const NOW_DAY = days.findIndex(day => day.date === NOW_DATE);
+
+        // Axis
+        const axis = document.createElement("div");
+        axis.className = "hour-axis";
+        const spacer = document.createElement("div");
+        spacer.className = "spacer";
+        axis.appendChild(spacer);
+        for (let h = 0; h < 24; h++) {
+          const span = document.createElement("span");
+          span.textContent = String(h).padStart(2, "0");
+          if (h === NOW_HOUR) span.classList.add("now");
+          axis.appendChild(span);
+        }
+        board.appendChild(axis);
+
+        // Days
+        displayDays.forEach((day, dayIdx) => {
+          const row = document.createElement("div");
+          row.className = "day-row";
+
+          const label = document.createElement("div");
+          label.className = "day-label";
+          label.innerHTML = day.isExample
+            ? day.label
+            : formatDate(day.date).split(' ').slice(0, 1).join(' ') + '<span class="sub">' + formatDate(day.date).split(' ').slice(1).join(' ') + '</span>';
+          row.appendChild(label);
+
+          // Only show first 24 hours of data
+          const data = day.hours.slice(0, 24);
+          const risks = data.map(d => d.risk);
+          const maxRisk = Math.max(...risks);
+          row.style.background = ROW_WASH[maxRisk];
+
+          // Chart
+          const chartCell = document.createElement("div");
+          chartCell.className = "chart-cell";
+          const W = 24, H = 46;
+          const topSpeedKmh = chartTopSpeedKmh(data);
+          const pts = data.map((d, i) => {
+            const x = Number(d.time.slice(0, 2)) + 0.5;
+            const y = H - (d.speed / topSpeedKmh) * (H - 6) - 3;
+            return [x, y];
+          });
+          const line = pts.map((p, i) => (i === 0 ? "M" : "L") + p[0] + "," + p[1].toFixed(1)).join(" ");
+          const area = line + ` L${W},${H} L0,${H} Z`;
+
+          const stops = risks.map((r, i) => {
+            const offset = ((Number(data[i].time.slice(0, 2)) + 0.5) / W * 100).toFixed(1) + "%";
+            return { offset, stroke: STROKE_COLOR[r], fill: FILL_COLOR[r] };
+          });
+          const strokeStops = stops.map(s => `<stop offset="${s.offset}" stop-color="${s.stroke}"/>`).join("");
+          const fillStops = stops.map(s => `<stop offset="${s.offset}" stop-color="${s.fill}"/>`).join("");
+
+          chartCell.innerHTML = `
           <svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="none">
             <defs>
               <linearGradient id="stroke${dayIdx}" x1="0" y1="0" x2="${W}" y2="0" gradientUnits="userSpaceOnUse">
@@ -539,64 +704,65 @@
             <path d="${area}" fill="url(#fill${dayIdx})" stroke="none"/>
             <path d="${line}" fill="none" stroke="url(#stroke${dayIdx})" stroke-width="0.9" vector-effect="non-scaling-stroke"/>
           </svg>`;
-        const chartTooltip = document.createElement("div");
-        chartTooltip.className = "chart-tooltip";
-        chartTooltip.hidden = true;
-        chartCell.appendChild(chartTooltip);
+          const chartTooltip = document.createElement("div");
+          chartTooltip.className = "chart-tooltip";
+          chartTooltip.hidden = true;
+          chartCell.appendChild(chartTooltip);
 
-        const showChartTooltip = event => {
-          const rect = chartCell.getBoundingClientRect();
-          const hour = Math.max(0, Math.min(23, Math.floor((event.clientX - rect.left) / rect.width * 24)));
-          const point = data.reduce((closest, candidate) =>
-            Math.abs(Number(candidate.time.slice(0, 2)) - hour) < Math.abs(Number(closest.time.slice(0, 2)) - hour)
-              ? candidate
-              : closest
-          );
-          chartTooltip.textContent = hourTooltip(point);
-          chartTooltip.style.left = `${((Number(point.time.slice(0, 2)) + 0.5) / 24) * 100}%`;
-          chartTooltip.style.top = `${Math.max(2, (point.speed / topSpeedKmh) * 100)}%`;
-          chartTooltip.hidden = false;
-        };
-        chartCell.addEventListener("pointermove", showChartTooltip);
-        chartCell.addEventListener("pointerleave", () => { chartTooltip.hidden = true; });
-        row.appendChild(chartCell);
+          const showChartTooltip = event => {
+            const rect = chartCell.getBoundingClientRect();
+            const hour = Math.max(0, Math.min(23, Math.floor((event.clientX - rect.left) / rect.width * 24)));
+            const point = data.reduce((closest, candidate) =>
+              Math.abs(Number(candidate.time.slice(0, 2)) - hour) < Math.abs(Number(closest.time.slice(0, 2)) - hour)
+                ? candidate
+                : closest
+            );
+            chartTooltip.textContent = hourTooltip(point);
+            chartTooltip.style.left = `${((Number(point.time.slice(0, 2)) + 0.5) / 24) * 100}%`;
+            chartTooltip.style.top = `${Math.max(2, (point.speed / topSpeedKmh) * 100)}%`;
+            chartTooltip.hidden = false;
+          };
+          chartCell.addEventListener("pointermove", showChartTooltip);
+          chartCell.addEventListener("pointerleave", () => { chartTooltip.hidden = true; });
+          row.appendChild(chartCell);
 
-        // Arrows
-        const arrowRow = document.createElement("div");
-        arrowRow.className = "arrow-row";
-        data.forEach((d, h) => {
-          const risk = d.risk;
-          const cell = document.createElement("div");
-          cell.className = "arrow-cell risk-" + risk;
-          cell.style.background = "var(--risk-" + risk + ")";
-          cell.style.gridColumn = Number(d.time.slice(0, 2)) + 1;
-          if (!day.isExample && day === days[NOW_DAY] && Number(d.time.slice(0, 2)) === NOW_HOUR) cell.classList.add("now");
-          cell.title = hourTooltip(d);
-          const rotation = (d.direction + 90) % 360;
-          const { text, sizePx } = arrowStyle(risk);
-          const span = document.createElement("span");
-          span.className = "arrow";
-          span.textContent = text;
-          span.style.fontSize = sizePx + "px";
-          span.style.transform = "rotate(" + rotation + "deg)";
-          cell.appendChild(span);
-          arrowRow.appendChild(cell);
+          // Arrows
+          const arrowRow = document.createElement("div");
+          arrowRow.className = "arrow-row";
+          data.forEach((d, h) => {
+            const risk = d.risk;
+            const cell = document.createElement("div");
+            cell.className = "arrow-cell risk-" + risk;
+            cell.style.background = "var(--risk-" + risk + ")";
+            cell.style.gridColumn = Number(d.time.slice(0, 2)) + 1;
+            if (!day.isExample && day === days[NOW_DAY] && Number(d.time.slice(0, 2)) === NOW_HOUR) cell.classList.add("now");
+            cell.title = hourTooltip(d);
+            const rotation = (d.direction + 90) % 360;
+            const { text, sizePx } = arrowStyle(risk);
+            const span = document.createElement("span");
+            span.className = "arrow";
+            span.textContent = text;
+            span.style.fontSize = sizePx + "px";
+            span.style.transform = "rotate(" + rotation + "deg)";
+            cell.appendChild(span);
+            arrowRow.appendChild(cell);
+          });
+          row.appendChild(arrowRow);
+
+          board.appendChild(row);
         });
-        row.appendChild(arrowRow);
 
-        board.appendChild(row);
-      });
-
-      footer.textContent = "";
-    } catch (err) {
-      board.innerHTML = `<div class="error">${err.message}</div>`;
-      footer.textContent = "Erreur lors du chargement des données";
-      console.error(err);
+        footer.textContent = "";
+      } catch (err) {
+        board.innerHTML = `<div class="error">${err.message}</div>`;
+        footer.textContent = "Erreur lors du chargement des données";
+        console.error(err);
+      }
     }
-  }
 
-  main();
-</script>
+    main();
+  </script>
 
 </body>
+
 </html>
