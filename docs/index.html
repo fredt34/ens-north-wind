@@ -112,10 +112,23 @@
     .risk-table {
       width: 100%;
       max-width: 920px;
-      margin-top: 14px;
+      margin-top: 8px;
       border-collapse: collapse;
       color: var(--ink-dim);
       font-size: 0.76rem;
+    }
+
+    .risk-details {
+      max-width: 920px;
+      margin-top: 14px;
+    }
+
+    .risk-details summary {
+      color: var(--ink);
+      cursor: pointer;
+      font-size: 0.86rem;
+      font-weight: 600;
+      list-style-position: inside;
     }
 
     .risk-table th,
@@ -149,6 +162,17 @@
     .scroller {
       overflow-x: auto;
       padding-bottom: 20px;
+      -webkit-overflow-scrolling: touch;
+    }
+
+    /* Kept outside the scrolling element: sticky cannot work inside it. */
+    .axis-sticky {
+      position: sticky;
+      top: 0;
+      z-index: 3;
+      overflow: hidden;
+      background: var(--bg);
+      border-bottom: 1px solid var(--line);
     }
 
     .board {
@@ -160,10 +184,9 @@
       display: grid;
       grid-template-columns: var(--label-w) repeat(24, var(--col-w));
       position: sticky;
-      top: 0;
       background: var(--bg);
-      z-index: 3;
-      padding-bottom: 4px;
+      padding: 8px 20px 4px;
+      width: max-content;
     }
 
     .hour-axis .spacer {}
@@ -315,6 +338,152 @@
         opacity: .7;
       }
     }
+
+    /* Phone portrait: readable controls while retaining horizontal time navigation. */
+    @media (max-width: 600px) {
+      :root {
+        --col-w: 38px;
+        --label-w: 68px;
+      }
+
+      header {
+        padding: 18px 12px 12px;
+      }
+
+      header h1 {
+        font-size: 1.2rem;
+      }
+
+      .banner {
+        margin: 12px 12px 0;
+        padding: 10px 12px;
+      }
+
+      .board {
+        padding: 12px 12px 0;
+      }
+
+      .hour-axis {
+        padding-left: 12px;
+        padding-right: 12px;
+      }
+
+      .day-row {
+        padding: 8px 0;
+      }
+
+      .chart-cell {
+        height: 52px;
+      }
+
+      .arrow-cell {
+        height: 40px;
+      }
+
+      .day-label {
+        font-size: 0.76rem;
+      }
+
+      .hour-axis span {
+        font-size: 0.7rem;
+      }
+
+      .risk-details {
+        margin-top: 12px;
+      }
+
+      .risk-details summary {
+        min-height: 40px;
+        display: flex;
+        align-items: center;
+        font-size: 0.82rem;
+      }
+
+      .risk-table,
+      .risk-table tbody,
+      .risk-table tr,
+      .risk-table td {
+        display: block;
+      }
+
+      .risk-table thead {
+        display: none;
+      }
+
+      .risk-table tr {
+        position: relative;
+        padding: 8px 0 8px 24px;
+      }
+
+      .risk-table td {
+        border: 0;
+        padding: 1px 0;
+      }
+
+      .risk-table td:first-child {
+        position: absolute;
+        top: 11px;
+        left: 0;
+      }
+
+      .risk-table td:nth-child(3)::before {
+        content: "Flèche : ";
+      }
+
+      .risk-table td:nth-child(4)::before {
+        content: "Condition : ";
+      }
+
+      .risk-table td:nth-child(5)::before {
+        content: "Action : ";
+      }
+
+      footer {
+        padding: 8px 12px calc(24px + env(safe-area-inset-bottom));
+      }
+    }
+
+    /* Phone landscape: use the width to show more hours and more chart detail. */
+    @media (max-width: 900px) and (max-height: 600px) and (orientation: landscape) {
+      :root {
+        --col-w: 33px;
+        --label-w: 64px;
+      }
+
+      header {
+        padding: 10px 16px 8px;
+      }
+
+      header h1 {
+        font-size: 1.1rem;
+      }
+
+      header p,
+      header .info {
+        font-size: 0.75rem;
+      }
+
+      .banner {
+        margin: 8px 16px 0;
+        padding: 8px 12px;
+      }
+
+      .board {
+        padding-top: 8px;
+      }
+
+      .chart-cell {
+        height: 62px;
+      }
+
+      .arrow-cell {
+        height: 34px;
+      }
+
+      .risk-table {
+        font-size: 0.68rem;
+      }
+    }
   </style>
 </head>
 
@@ -324,7 +493,10 @@
     <h1>Prévisions Vent – ENS</h1>
     <p>Courbe = vitesse du vent. Flèches = direction (vers laquelle il souffle). Fond des flèches = niveau de risque
       (secteur Nord). Données de <a href="https://open-meteo.com/" target="_blank">Open Meteo</a></p>
-    <table class="risk-table" id="riskTable"></table>
+    <details class="risk-details" id="riskDetails" open>
+      <summary>Comprendre les niveaux de risque</summary>
+      <table class="risk-table" id="riskTable"></table>
+    </details>
   </header>
 
   <div class="banner" id="banner" style="display:none;">
@@ -332,7 +504,11 @@
     <div id="bannerText"></div>
   </div>
 
-  <div class="scroller">
+  <div class="axis-sticky" aria-label="Heures de prévision">
+    <div class="hour-axis" id="hourAxis"></div>
+  </div>
+
+  <div class="scroller" id="scroller">
     <div class="board" id="board"></div>
   </div>
 
@@ -584,12 +760,38 @@
       return `${dayLabel} ${firstAlertHour.time.slice(0, 5)}`;
     }
 
+    let activeChartTooltip = null;
+
+    function configureRiskDetails() {
+      const riskDetails = document.getElementById("riskDetails");
+      const mobileQuery = window.matchMedia("(max-width: 600px), (max-width: 900px) and (max-height: 600px) and (orientation: landscape)");
+      riskDetails.open = !mobileQuery.matches;
+      mobileQuery.addEventListener("change", event => {
+        riskDetails.open = !event.matches;
+      });
+    }
+
+    function scrollToCurrentHours(scroller, axis, currentHour) {
+      const narrowScreenQuery = window.matchMedia("(max-width: 600px)");
+      if (!narrowScreenQuery.matches) return;
+
+      const columnWidth = parseFloat(getComputedStyle(document.documentElement).getPropertyValue("--col-w"));
+      const labelWidth = parseFloat(getComputedStyle(document.documentElement).getPropertyValue("--label-w"));
+      const startHour = Math.max(0, currentHour - 2);
+      const horizontalPadding = 12;
+      scroller.scrollLeft = horizontalPadding + labelWidth + startHour * columnWidth;
+      axis.style.transform = `translateX(${-scroller.scrollLeft}px)`;
+    }
+
     async function main() {
       const board = document.getElementById("board");
+      const axis = document.getElementById("hourAxis");
+      const scroller = document.getElementById("scroller");
       const banner = document.getElementById("banner");
       const bannerText = document.getElementById("bannerText");
       const footer = document.getElementById("footer");
       renderRiskTable();
+      configureRiskDetails();
 
       try {
         const dataResponse = await fetch(CONFIG.dataUrl);
@@ -640,8 +842,6 @@
         const NOW_DAY = days.findIndex(day => day.date === NOW_DATE);
 
         // Axis
-        const axis = document.createElement("div");
-        axis.className = "hour-axis";
         const spacer = document.createElement("div");
         spacer.className = "spacer";
         axis.appendChild(spacer);
@@ -651,7 +851,11 @@
           if (h === NOW_HOUR) span.classList.add("now");
           axis.appendChild(span);
         }
-        board.appendChild(axis);
+        // The sticky axis sits outside `.scroller`; mirror its horizontal position.
+        scroller.addEventListener("scroll", () => {
+          axis.style.transform = `translateX(${-scroller.scrollLeft}px)`;
+        }, { passive: true });
+        requestAnimationFrame(() => scrollToCurrentHours(scroller, axis, NOW_HOUR));
 
         // Days
         displayDays.forEach((day, dayIdx) => {
@@ -720,10 +924,22 @@
             chartTooltip.textContent = hourTooltip(point);
             chartTooltip.style.left = `${((Number(point.time.slice(0, 2)) + 0.5) / 24) * 100}%`;
             chartTooltip.style.top = `${Math.max(2, (point.speed / topSpeedKmh) * 100)}%`;
+            if (activeChartTooltip && activeChartTooltip !== chartTooltip) activeChartTooltip.hidden = true;
             chartTooltip.hidden = false;
+            activeChartTooltip = chartTooltip;
           };
-          chartCell.addEventListener("pointermove", showChartTooltip);
-          chartCell.addEventListener("pointerleave", () => { chartTooltip.hidden = true; });
+          chartCell.addEventListener("pointermove", event => {
+            if (event.pointerType === "mouse") showChartTooltip(event);
+          });
+          chartCell.addEventListener("pointerdown", event => {
+            if (event.pointerType !== "mouse") {
+              showChartTooltip(event);
+            }
+          });
+          chartCell.addEventListener("pointerleave", () => {
+            if (activeChartTooltip === chartTooltip) activeChartTooltip = null;
+            chartTooltip.hidden = true;
+          });
           row.appendChild(chartCell);
 
           // Arrows
