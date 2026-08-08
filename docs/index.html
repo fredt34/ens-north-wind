@@ -176,13 +176,13 @@
     }
 
     .board {
-      min-width: calc(var(--label-w) + 24 * var(--col-w));
+      min-width: calc(2 * var(--label-w) + 24 * var(--col-w));
       padding: 14px 20px 0;
     }
 
     .hour-axis {
       display: grid;
-      grid-template-columns: var(--label-w) repeat(24, var(--col-w));
+      grid-template-columns: var(--label-w) repeat(24, var(--col-w)) var(--label-w);
       position: sticky;
       background: var(--bg);
       padding: 8px 20px 4px;
@@ -204,7 +204,7 @@
 
     .day-row {
       display: grid;
-      grid-template-columns: var(--label-w) repeat(24, var(--col-w));
+      grid-template-columns: var(--label-w) repeat(24, var(--col-w)) var(--label-w);
       align-items: end;
       border-top: 1px solid var(--line);
       padding: 10px 0 8px;
@@ -230,6 +230,12 @@
       font-weight: 400;
       color: var(--ink-dim);
       font-size: 0.68rem;
+    }
+
+    .day-label-right {
+      grid-column: 26;
+      padding-left: 8px;
+      padding-right: 0;
     }
 
     .chart-cell {
@@ -851,6 +857,9 @@
           if (h === NOW_HOUR) span.classList.add("now");
           axis.appendChild(span);
         }
+        const trailingSpacer = document.createElement("div");
+        trailingSpacer.className = "spacer";
+        axis.appendChild(trailingSpacer);
         // The sticky axis sits outside `.scroller`; mirror its horizontal position.
         scroller.addEventListener("scroll", () => {
           axis.style.transform = `translateX(${-scroller.scrollLeft}px)`;
@@ -964,6 +973,10 @@
             arrowRow.appendChild(cell);
           });
           row.appendChild(arrowRow);
+
+          const rightLabel = label.cloneNode(true);
+          rightLabel.classList.add("day-label-right");
+          row.appendChild(rightLabel);
 
           board.appendChild(row);
         });
