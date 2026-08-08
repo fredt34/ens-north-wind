@@ -3,22 +3,24 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Prévisions Vent — ENS (v3, style meteogramme)</title>
+<title>Prévisions Vent – ENS</title>
 <style>
   :root{
     --bg: #0a0f1a;
     --panel: #0d1526;
     --line: #1c2740;
-    --ink: #e8ecf5;
+    --ink: #e8ecf5; 
+    --ink: #fefefe;
     --ink-dim: #8a95ac;
+    --ink-dim: #fcfcfc;
     --curve: #8f6fe0;
     --curve-fill-a: rgba(143,111,224,0.35);
     --curve-fill-b: rgba(143,111,224,0.02);
 
     --risk-0: #141d2e;
-    --risk-1: #5c2a2a;
-    --risk-2: #8f2f2f;
-    --risk-3: #c92f2f;
+    --risk-1: #9a6b13;
+    --risk-2: #b52d2d;
+    --risk-3: #b52d2d;
 
     --col-w: 40px;
     --label-w: 78px;
@@ -88,17 +90,30 @@
     margin-top: 2px;
   }
 
-  .legend{
-    display:flex;
-    flex-wrap: wrap;
-    gap: 14px;
-    padding: 16px 20px 4px;
-    font-size: 0.76rem;
-    color: var(--ink-dim);
-  }
-  .legend span{ display:inline-flex; align-items:center; gap:6px; }
   .swatch{ width:12px; height:12px; border-radius:3px; display:inline-block; }
 
+  .risk-table{
+    width: 100%;
+    max-width: 920px;
+    margin-top: 14px;
+    border-collapse: collapse;
+    color: var(--ink-dim);
+    font-size: 0.76rem;
+  }
+  .risk-table th,
+  .risk-table td{
+    padding: 7px 8px;
+    border-top: 1px solid var(--line);
+    text-align: left;
+    vertical-align: middle;
+  }
+  .risk-table th{
+    color: var(--ink);
+    font-weight: 600;
+  }
+  .risk-table .level{ color: var(--ink); font-weight: 600; }
+  .risk-table .swatch{ vertical-align: middle; }
+  .risk-table .arrow-example{ color: var(--ink); line-height: 1; vertical-align: middle; }
   .scroller{
     overflow-x: auto;
     padding-bottom: 20px;
@@ -158,6 +173,21 @@
     height: 46px;
   }
   .chart-cell svg{ display:block; width:100%; height:100%; overflow: visible; }
+  .chart-tooltip{
+    position: absolute;
+    z-index: 2;
+    max-width: 260px;
+    padding: 5px 7px;
+    border: 1px solid var(--line);
+    border-radius: 4px;
+    background: #111a2d;
+    color: var(--ink);
+    font-size: 0.7rem;
+    line-height: 1.3;
+    pointer-events: none;
+    transform: translate(-50%, calc(-100% - 4px));
+    white-space: nowrap;
+  }
 
   .arrow-row{
     grid-column: 2 / span 24;
@@ -177,7 +207,9 @@
   .arrow-cell.now::before{
     content:"";
     position:absolute; inset:0;
-    box-shadow: inset 0 0 0 1px rgba(232,236,245,0.5);
+    box-shadow: inset 0 0 0 2px #fff, 0 0 10px rgba(255,255,255,0.9);
+    z-index: 1;
+    pointer-events: none;
   }
   .arrow-cell.risk-3::after{
     content:"";
@@ -191,36 +223,9 @@
   .arrow{
     display:inline-block;
     color:#f4f6fb;
-    font-size: 13px;
+    color:#fafafa;    
     line-height: 1;
   }
-
-  .legend-section{
-    padding: 6px 20px;
-    font-size: 0.76rem;
-    color: var(--ink-dim);
-  }
-  .legend-section strong{
-    color: var(--ink);
-  }
-
-  .legend-arrows{
-    display:flex; align-items:center; gap:16px;
-    padding: 2px 20px 0;
-    flex-wrap: wrap;
-  }
-  .legend-arrows .sample{ display:flex; align-items:center; gap:6px; }
-
-  .legend-risks{
-    display:flex; align-items:center; gap:20px;
-    padding: 2px 20px 24px;
-    flex-wrap: wrap;
-  }
-  .legend-risks .item{ display:flex; align-items:center; gap:8px; font-size: 0.75rem; }
-  .legend-risks .label{ display:flex; flex-direction:column; gap:2px; }
-  .legend-risks .label strong{ font-weight: 600; color: var(--ink); }
-  .legend-risks .label .threshold{ font-size: 0.68rem; color: var(--ink-dim); }
-  .legend-risks .label .note{ font-size: 0.65rem; color: var(--ink-dim); font-style: italic; }
 
   footer{
     padding: 8px 20px 30px;
@@ -247,11 +252,9 @@
 <body>
 
 <header>
-  <h1>Prévisions Vent — ENS</h1>
+  <h1>Prévisions Vent – ENS</h1>
   <p>Courbe = vitesse du vent. Flèches = direction (vers laquelle il souffle). Fond des flèches = niveau de risque (secteur Nord). Données de <a href="https://open-meteo.com/" target="_blank">Open Meteo</a></p>
-  <div class="info">
-    <strong>Distinction Alerte / Critique :</strong> Tous deux correspondent à un vent ≥ 30 km/h. La différence : l'<strong>Alerte</strong> peut être ponctuelle, tandis que le <strong>Critique</strong> indique un vent soutenu pendant <strong>au moins 4 heures consécutives</strong>.
-  </div>
+  <table class="risk-table" id="riskTable"></table>
 </header>
 
 <div class="banner" id="banner" style="display:none;">
@@ -259,56 +262,8 @@
   <div id="bannerText"></div>
 </div>
 
-<div class="legend">
-  <span><span class="swatch" style="background:var(--risk-0)"></span> Neutre</span>
-  <span><span class="swatch" style="background:var(--risk-1)"></span> Vigilance</span>
-  <span><span class="swatch" style="background:var(--risk-2)"></span> Alerte</span>
-  <span><span class="swatch" style="background:var(--risk-3)"></span> Critique</span>
-</div>
-
 <div class="scroller">
   <div class="board" id="board"></div>
-</div>
-
-<div class="legend-section">Taille des flèches par vitesse du vent :</div>
-<div class="legend-arrows">
-  <span class="sample"><span class="arrow" style="font-size:12px">➨</span> < 15 km/h</span>
-  <span class="sample"><span class="arrow" style="font-size:16px">➨</span> 15–30 km/h</span>
-  <span class="sample"><span class="arrow" style="font-size:20px">➨</span> ≥ 30 km/h</span>
-</div>
-
-<div class="legend-section">Seuils de risque (vent de secteur Nord uniquement) :</div>
-<div class="legend-risks">
-  <div class="item">
-    <div class="swatch" style="background:var(--risk-0)"></div>
-    <div class="label">
-      <strong>Neutre</strong>
-      <span class="threshold">< 15 km/h</span>
-    </div>
-  </div>
-  <div class="item">
-    <div class="swatch" style="background:var(--risk-1)"></div>
-    <div class="label">
-      <strong>Vigilance</strong>
-      <span class="threshold">15–30 km/h</span>
-    </div>
-  </div>
-  <div class="item">
-    <div class="swatch" style="background:var(--risk-2)"></div>
-    <div class="label">
-      <strong>Alerte</strong>
-      <span class="threshold">≥ 30 km/h</span>
-      <span class="note">ponctuel</span>
-    </div>
-  </div>
-  <div class="item">
-    <div class="swatch" style="background:var(--risk-3)"></div>
-    <div class="label">
-      <strong>Critique</strong>
-      <span class="threshold">≥ 30 km/h</span>
-      <span class="note">4h consécutives+</span>
-    </div>
-  </div>
 </div>
 
 <footer id="footer">Chargement des données...</footer>
@@ -318,26 +273,101 @@
     dataUrl: "https://api.open-meteo.com/v1/forecast?latitude=48.8627&longitude=2.2875&hourly=wind_speed_80m,wind_direction_80m&timezone=auto&forecast_days=10",
     northSectorWnwDeg: 292.5,
     northSectorEneDeg: 67.5,
+    risk: {
+      vigilanceSpeedKmh: 25,
+      alertSpeedKmh: 40,
+      criticalDurationHours: 4,
+      levels: {
+        0: { name: "Neutre", condition: "Hors secteur Nord ou < 25 km/h", description: "Aucune action requise" },
+        1: { name: "Vigilance", condition: "25–< 40 km/h", description: "Surveiller : les conditions peuvent se dégrader" },
+        2: { name: "Alerte", condition: "≥ 40 km/h, moins de 4 h consécutives", description: "Vent fort ; les opérations peuvent continuer, mais la situation peut empirer" },
+        3: { name: "Critique", condition: "≥ 40 km/h pendant au moins 4 h consécutives", description: "Suspendre les expériences sensibles" },
+      },
+      exampleWindDirectionsDeg: [
+        350, 170, 190, 25, 340, 15, 55, 310,
+        20, 345, 40, 320, 10, 340, 335, 30,
+        5, 340, 325, 45, 350, 20, 340, 40,
+      ],
+      exampleWindSpeedKmh: [
+        12, 14, 18, 20, 27, 31, 35, 38,
+        16, 22, 43, 46, 35, 39, 60, 65,
+        25, 25, 60, 70, 90, 98, 78, 68,
+      ],
+    },
+    arrow: {
+      chartMaxSpeedKmh: 45,
+      styles: {
+        0: { text: "→", sizePx: 12, label: "" },
+        1: { text: "→", sizePx: 18, label: "" },
+        2: { text: "→", sizePx: 30, label: "" },
+        3: { text: "↠", sizePx: 30, label: "" },
+      },
+    },
   };
 
   function isNorth(dir){ return dir >= CONFIG.northSectorWnwDeg || dir <= CONFIG.northSectorEneDeg; }
   
-  function riskLevel(dir, speed){
-    if (!isNorth(dir)) return 0;
-    if (speed < 15) return 1;
-    if (speed < 30) return 2;
-    return 3;
-  }
-  
-  function arrowSize(speed){
-    const min = 11, max = 20;
-    const c = Math.max(0, Math.min(45, speed));
-    return min + (c/45) * (max-min);
+  function baseRiskLevel(dir, speed){
+    if (!isNorth(dir) || speed < CONFIG.risk.vigilanceSpeedKmh) return 0;
+    if (speed < CONFIG.risk.alertSpeedKmh) return 1;
+    return 2;
   }
 
-  const STROKE_COLOR = { 0: "#8f6fe0", 1: "#c96a4a", 2: "#e1483f", 3: "#ff4d4d" };
-  const FILL_COLOR   = { 0: "rgba(143,111,224,0.32)", 1: "rgba(201,106,74,0.28)", 2: "rgba(225,72,63,0.30)", 3: "rgba(255,77,77,0.34)" };
-  const ROW_WASH     = { 0: "transparent", 1: "rgba(140,60,60,0.08)", 2: "rgba(180,50,50,0.13)", 3: "rgba(220,40,40,0.18)" };
+  function annotateRisks(days) {
+    const hours = days.flatMap(day => day.hours);
+    let runStart = 0;
+
+    while (runStart < hours.length) {
+      const isStrongNorthWind = hour => isNorth(hour.direction) && hour.speed >= CONFIG.risk.alertSpeedKmh;
+      if (!isStrongNorthWind(hours[runStart])) {
+        hours[runStart].risk = baseRiskLevel(hours[runStart].direction, hours[runStart].speed);
+        runStart++;
+        continue;
+      }
+
+      let runEnd = runStart;
+      while (runEnd < hours.length && isStrongNorthWind(hours[runEnd])) runEnd++;
+      const risk = runEnd - runStart >= CONFIG.risk.criticalDurationHours ? 3 : 2;
+      for (let i = runStart; i < runEnd; i++) hours[i].risk = risk;
+      runStart = runEnd;
+    }
+  }
+  
+  function arrowStyle(risk){
+    return CONFIG.arrow.styles[risk];
+  }
+
+  function chartTopSpeedKmh(hours) {
+    const maxSpeedKmh = Math.max(...hours.map(hour => hour.speed));
+    if (maxSpeedKmh <= CONFIG.arrow.chartMaxSpeedKmh) return CONFIG.arrow.chartMaxSpeedKmh;
+    return Math.ceil((maxSpeedKmh + 5) / 10) * 10;
+  }
+
+  function hourTooltip(hour) {
+    const riskLabel = hour.risk > 0 ? ` — ${CONFIG.risk.levels[hour.risk].name}` : "";
+    return `${hour.time} — ${hour.speed} km/h, ${Math.round(hour.direction)}°${riskLabel}`;
+  }
+
+  function renderRiskTable() {
+    const { vigilanceSpeedKmh, alertSpeedKmh, criticalDurationHours } = CONFIG.risk;
+    const levels = CONFIG.risk.levels;
+    const arrowExample = risk => {
+      const { text, sizePx } = arrowStyle(risk);
+      return `<span class="arrow arrow-example" style="font-size:${sizePx}px">${text}</span>`;
+    };
+    document.getElementById("riskTable").innerHTML = `
+      <thead><tr><th colspan="2">Niveau de risque</th><th>Flèche</th><th>Condition (secteur Nord)</th><th>Interprétation</th></tr></thead>
+      <tbody>
+        <tr><td><span class="swatch" style="background:var(--risk-0)"></span></td><td class="level">${levels[0].name}</td><td>${arrowExample(0)}</td><td>Hors secteur Nord ou &lt; ${vigilanceSpeedKmh} km/h</td><td>${levels[0].description}</td></tr>
+        <tr><td><span class="swatch" style="background:var(--risk-1)"></span></td><td class="level">${levels[1].name}</td><td>${arrowExample(1)}</td><td>${vigilanceSpeedKmh}–&lt; ${alertSpeedKmh} km/h</td><td>${levels[1].description}</td></tr>
+        <tr><td><span class="swatch" style="background:var(--risk-2)"></span></td><td class="level">${levels[2].name}</td><td>${arrowExample(2)}</td><td>≥ ${alertSpeedKmh} km/h, moins de ${criticalDurationHours} h consécutives</td><td>${levels[2].description}</td></tr>
+        <tr><td><span class="swatch" style="background:var(--risk-3)"></span></td><td class="level">${levels[3].name}</td><td>${arrowExample(3)}</td><td>≥ ${alertSpeedKmh} km/h pendant au moins ${criticalDurationHours} h consécutives</td><td>${levels[3].description}</td></tr>
+      </tbody>`;
+  }
+
+  const STROKE_COLOR = { 0: "#8f6fe0", 1: "#f0b429", 2: "#ff5252", 3: "#ff5252" };
+  const FILL_COLOR   = { 0: "rgba(143,111,224,0.32)", 1: "rgba(240,180,41,0.30)", 2: "rgba(255,82,82,0.34)", 3: "rgba(255,82,82,0.34)" };
+  const ROW_WASH     = { 0: "transparent", 1: "rgba(240,180,41,0.11)", 2: "rgba(255,82,82,0.17)", 3: "rgba(255,82,82,0.17)" };
 
   function groupByDay(hourly) {
     const days = new Map();
@@ -360,34 +390,43 @@
     return [...days.entries()].map(([date, hours]) => ({ date, hours }));
   }
 
+  function createExampleDay() {
+    const { exampleWindDirectionsDeg, exampleWindSpeedKmh } = CONFIG.risk;
+    const exampleDay = {
+      isExample: true,
+      label: "Exemple",
+      hours: exampleWindSpeedKmh.map((speed, hour) => ({
+        iso: `exempleT${String(hour).padStart(2, "0")}:00`,
+        date: "exemple",
+        time: `${String(hour).padStart(2, "0")}:00`,
+        speed,
+        direction: exampleWindDirectionsDeg[hour],
+      })),
+    };
+    annotateRisks([exampleDay]);
+    return exampleDay;
+  }
+
   function formatDate(dateStr) {
     const d = new Date(dateStr + "T00:00:00");
-    return new Intl.DateTimeFormat("fr-FR", {
+    const formattedDate = new Intl.DateTimeFormat("fr-FR", {
       weekday: "long",
       day: "2-digit",
       month: "long",
       year: "numeric"
     }).format(d);
+    return formattedDate.charAt(0).toLocaleUpperCase("fr-FR") + formattedDate.slice(1);
   }
 
   function findCriticalWindow(days) {
-    for (let dayIdx = 0; dayIdx < days.length; dayIdx++) {
-      const day = days[dayIdx];
-      for (let h = 0; h < day.hours.length - 3; h++) {
-        let allCritical = true;
-        for (let i = 0; i < 4; i++) {
-          const risk = riskLevel(day.hours[h + i].direction, day.hours[h + i].speed);
-          if (risk < 3) { allCritical = false; break; }
-        }
-        if (allCritical) {
-          const startTime = day.hours[h].time.slice(0, 5);
-          const endTime = day.hours[h + 3].time.slice(0, 5);
-          const dayLabel = new Intl.DateTimeFormat("fr-FR", { weekday: "long" }).format(new Date(day.date + "T00:00:00"));
-          return `${dayLabel} ${startTime}–${endTime}`;
-        }
-      }
-    }
-    return null;
+    const hours = days.flatMap(day => day.hours);
+    const firstCriticalHour = hours.find(hour => hour.risk === 3);
+    if (!firstCriticalHour) return null;
+
+    const dayLabel = new Intl.DateTimeFormat("fr-FR", { weekday: "long" }).format(new Date(firstCriticalHour.date + "T00:00:00"));
+    const startTime = firstCriticalHour.time.slice(0, 5);
+    const endHour = hours[hours.indexOf(firstCriticalHour) + CONFIG.risk.criticalDurationHours - 1];
+    return `${dayLabel} ${startTime}–${endHour.time.slice(0, 5)}`;
   }
 
   async function main() {
@@ -395,6 +434,7 @@
     const banner = document.getElementById("banner");
     const bannerText = document.getElementById("bannerText");
     const footer = document.getElementById("footer");
+    renderRiskTable();
 
     try {
       const dataResponse = await fetch(CONFIG.dataUrl);
@@ -411,8 +451,8 @@
       }
 
       const days = groupByDay(hourly);
-      const SPEED_MAX = 45;
-
+      annotateRisks(days);
+      const displayDays = [createExampleDay(), ...days];
       // Update banner with critical window
       const criticalWindow = findCriticalWindow(days);
       if (criticalWindow) {
@@ -420,9 +460,19 @@
         banner.style.display = "flex";
       }
 
-      // Find current hour (use first hour of data as reference)
-      const NOW_HOUR = new Date(days[0].hours[0].iso).getHours();
-      const NOW_DAY = 0;
+      // Find the current date and hour in the timezone used by the forecast.
+      const dateTimeParts = new Intl.DateTimeFormat("en-CA", {
+        timeZone: data.timezone,
+        year: "numeric",
+        month: "2-digit",
+        day: "2-digit",
+        hour: "2-digit",
+        hourCycle: "h23",
+      }).formatToParts(new Date());
+      const currentPart = type => dateTimeParts.find(part => part.type === type).value;
+      const NOW_DATE = `${currentPart("year")}-${currentPart("month")}-${currentPart("day")}`;
+      const NOW_HOUR = Number(currentPart("hour"));
+      const NOW_DAY = days.findIndex(day => day.date === NOW_DATE);
 
       // Axis
       const axis = document.createElement("div");
@@ -439,18 +489,20 @@
       board.appendChild(axis);
 
       // Days
-      days.forEach((day, dayIdx) => {
+      displayDays.forEach((day, dayIdx) => {
         const row = document.createElement("div");
         row.className = "day-row";
 
         const label = document.createElement("div");
         label.className = "day-label";
-        label.innerHTML = formatDate(day.date).split(' ').slice(0, 1).join(' ') + '<span class="sub">' + formatDate(day.date).split(' ').slice(1).join(' ') + '</span>';
+        label.innerHTML = day.isExample
+          ? day.label
+          : formatDate(day.date).split(' ').slice(0, 1).join(' ') + '<span class="sub">' + formatDate(day.date).split(' ').slice(1).join(' ') + '</span>';
         row.appendChild(label);
 
         // Only show first 24 hours of data
         const data = day.hours.slice(0, 24);
-        const risks = data.map(d => riskLevel(d.direction, d.speed));
+        const risks = data.map(d => d.risk);
         const maxRisk = Math.max(...risks);
         row.style.background = ROW_WASH[maxRisk];
 
@@ -458,16 +510,17 @@
         const chartCell = document.createElement("div");
         chartCell.className = "chart-cell";
         const W = 24, H = 46;
+        const topSpeedKmh = chartTopSpeedKmh(data);
         const pts = data.map((d, i) => {
-          const x = i + 0.5;
-          const y = H - (Math.min(d.speed, SPEED_MAX)/SPEED_MAX) * (H-6) - 3;
+          const x = Number(d.time.slice(0, 2)) + 0.5;
+          const y = H - (d.speed / topSpeedKmh) * (H-6) - 3;
           return [x,y];
         });
         const line = pts.map((p,i) => (i===0?"M":"L") + p[0] + "," + p[1].toFixed(1)).join(" ");
         const area = line + ` L${W},${H} L0,${H} Z`;
 
         const stops = risks.map((r,i) => {
-          const offset = ((i + 0.5) / W * 100).toFixed(1) + "%";
+          const offset = ((Number(data[i].time.slice(0, 2)) + 0.5) / W * 100).toFixed(1) + "%";
           return { offset, stroke: STROKE_COLOR[r], fill: FILL_COLOR[r] };
         });
         const strokeStops = stops.map(s => `<stop offset="${s.offset}" stop-color="${s.stroke}"/>`).join("");
@@ -486,23 +539,45 @@
             <path d="${area}" fill="url(#fill${dayIdx})" stroke="none"/>
             <path d="${line}" fill="none" stroke="url(#stroke${dayIdx})" stroke-width="0.9" vector-effect="non-scaling-stroke"/>
           </svg>`;
+        const chartTooltip = document.createElement("div");
+        chartTooltip.className = "chart-tooltip";
+        chartTooltip.hidden = true;
+        chartCell.appendChild(chartTooltip);
+
+        const showChartTooltip = event => {
+          const rect = chartCell.getBoundingClientRect();
+          const hour = Math.max(0, Math.min(23, Math.floor((event.clientX - rect.left) / rect.width * 24)));
+          const point = data.reduce((closest, candidate) =>
+            Math.abs(Number(candidate.time.slice(0, 2)) - hour) < Math.abs(Number(closest.time.slice(0, 2)) - hour)
+              ? candidate
+              : closest
+          );
+          chartTooltip.textContent = hourTooltip(point);
+          chartTooltip.style.left = `${((Number(point.time.slice(0, 2)) + 0.5) / 24) * 100}%`;
+          chartTooltip.style.top = `${Math.max(2, (point.speed / topSpeedKmh) * 100)}%`;
+          chartTooltip.hidden = false;
+        };
+        chartCell.addEventListener("pointermove", showChartTooltip);
+        chartCell.addEventListener("pointerleave", () => { chartTooltip.hidden = true; });
         row.appendChild(chartCell);
 
         // Arrows
         const arrowRow = document.createElement("div");
         arrowRow.className = "arrow-row";
         data.forEach((d, h) => {
-          const risk = riskLevel(d.direction, d.speed);
+          const risk = d.risk;
           const cell = document.createElement("div");
           cell.className = "arrow-cell risk-" + risk;
           cell.style.background = "var(--risk-" + risk + ")";
-          if (dayIdx === NOW_DAY && h === NOW_HOUR) cell.classList.add("now");
-          cell.title = `${d.time} — ${d.speed} km/h, ${Math.round(d.direction)}°`;
+          cell.style.gridColumn = Number(d.time.slice(0, 2)) + 1;
+          if (!day.isExample && day === days[NOW_DAY] && Number(d.time.slice(0, 2)) === NOW_HOUR) cell.classList.add("now");
+          cell.title = hourTooltip(d);
           const rotation = (d.direction + 90) % 360;
+          const { text, sizePx } = arrowStyle(risk);
           const span = document.createElement("span");
           span.className = "arrow";
-          span.textContent = "➨";
-          span.style.fontSize = arrowSize(d.speed) + "px";
+          span.textContent = text;
+          span.style.fontSize = sizePx + "px";
           span.style.transform = "rotate(" + rotation + "deg)";
           cell.appendChild(span);
           arrowRow.appendChild(cell);
@@ -512,7 +587,7 @@
         board.appendChild(row);
       });
 
-      footer.textContent = "Données de Open Meteo (mise à jour toutes les heures)";
+      footer.textContent = "";
     } catch (err) {
       board.innerHTML = `<div class="error">${err.message}</div>`;
       footer.textContent = "Erreur lors du chargement des données";
